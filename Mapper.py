@@ -5,36 +5,36 @@ from ete3 import Tree, TreeNode
 
 
 def fix_topology(input_tree, reference_tree):
-    new_tree = copy.deepcopy(input_tree)
-    new_leaves = [child.get_leaf_names() for child in new_tree.get_children()]
-    result_leaves = [child.get_leaf_names() for child in reference_tree.get_children()]
+    tree_copy = copy.deepcopy(input_tree)
+    copied_leaves = [child.get_leaf_names() for child in tree_copy.get_children()]
+    reference_leaves = [child.get_leaf_names() for child in reference_tree.get_children()]
 
-    for leaf_group in new_leaves:
+    for leaf_group in copied_leaves:
 
-        if leaf_group not in result_leaves:
+        if leaf_group not in reference_leaves:
             continue
 
         # scenario 1: leaf group is valid but only one taxon
         if len(leaf_group) == 1:
-            new_tree.set_outgroup(leaf_group.pop())
-            return new_tree
+            tree_copy.set_outgroup(leaf_group[0])
+            return tree_copy
 
         # scenario 2: leaf group is valid but multiple taxa
         outgroup = leaf_group.pop().get_common_ancestor(leaf_group)
-        new_tree.set_outgroup(outgroup)
-        return new_tree
+        tree_copy.set_outgroup(outgroup)
+        return tree_copy
 
     # scenario 3: none of the leaf groups of root is valid
     def find_outgroup(node):
-        parent = node.get_ancestors()[0]
+        parent = node.up
 
-        if parent.get_leaf_names() in result_leaves:
+        if parent.get_leaf_names() in reference_leaves:
             return parent
         else:
             return find_outgroup(parent)
 
-    new_tree.set_outgroup(find_outgroup(new_tree.get_farthest_leaf()[0]))
-    return new_tree
+    tree_copy.set_outgroup(find_outgroup(tree_copy.get_farthest_leaf()[0]))
+    return tree_copy
 
 
 def main(args):
@@ -63,7 +63,8 @@ def main(args):
 
         assert new_master_tree.robinson_foulds(master_tree)[0] == 0, "The new master tree is not the same!"
 
-        print(f"Reference master tree:{master_tree} \nNew master tree:{new_master_tree}")
+        print(f"Reference master tree:{master_tree} \nSubtree A:{a_tree} \nSubtree B:{b_tree}"
+              f"\nNew master tree:{new_master_tree}")
 
     except AssertionError as e:
         print(f"Oops! {e}")
@@ -88,7 +89,6 @@ if __name__ == "__main__":
         "-m", "master.tree",
         "-a", "a.tree",
         "-b", "b.tree"
-
     ]
 
     arguments = parser.parse_args()
