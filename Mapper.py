@@ -20,8 +20,7 @@ def fix_topology(input_tree, reference_tree):
             return new_tree
 
         # scenario 2: leaf group is valid but multiple taxa
-        leaf_nodes = [new_tree.get_leaves_by_name(leaf_name) for leaf_name in leaf_group]
-        outgroup = leaf_nodes.pop().get_common_ancestor(leaf_nodes)
+        outgroup = leaf_group.pop().get_common_ancestor(leaf_group)
         new_tree.set_outgroup(outgroup)
         return new_tree
 
