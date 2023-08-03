@@ -4,10 +4,10 @@ import argparse
 from ete3 import Tree, TreeNode
 
 
-def fix_topology(input_tree, result_tree):
+def fix_topology(input_tree, reference_tree):
     new_tree = copy.deepcopy(input_tree)
     new_leaves = [child.get_leaf_names() for child in new_tree.get_children()]
-    result_leaves = [child.get_leaf_names() for child in result_tree.get_children()]
+    result_leaves = [child.get_leaf_names() for child in reference_tree.get_children()]
 
     for leaf_group in new_leaves:
 
@@ -42,24 +42,38 @@ def main(args):
 
     try:
         master_tree = Tree(args.master_tree)
+
         assert len(master_tree.get_children()) == 2, "Master tree must be rooted!"
+
+        a_tree = Tree(args.a_tree)
+        b_tree = Tree(args.b_tree)
+
+        for subtree in master_tree.get_children():
+            if subtree.get_leaf_names() == a_tree.get_leaf_names():
+                sub_a_tree = subtree
+            if subtree.get_leaf_names() == b_tree.get_leaf_names():
+                sub_b_tree = subtree
+
+        new_a_tree = fix_topology(a_tree, sub_a_tree)
+        new_b_tree = fix_topology(b_tree, sub_b_tree)
+
+        # reconstruct master tree
+        new_master_tree = TreeNode()
+        new_master_tree.add_child(new_a_tree)
+        new_master_tree.add_child(new_b_tree)
+
+        assert new_master_tree.robinson_foulds(master_tree)[0] == 0, "The new master tree is not the same!"
+
+        print(f"Reference master tree:{master_tree} \nNew master tree:{new_master_tree}")
+
     except AssertionError as e:
         print(f"Oops! {e}")
+
+    except NameError as e:
+        print(f"Panda-monium! {e}")
+
+    finally:
         sys.exit()
-
-    a_tree = Tree(args.a_tree)
-    b_tree = Tree(args.b_tree)
-    sub_a_tree = master_tree.get_children()[0]
-    sub_b_tree = master_tree.get_children()[1]
-
-    new_a_tree = fix_topology(a_tree, sub_a_tree)
-    new_b_tree = fix_topology(b_tree, sub_b_tree)
-    new_master_tree = TreeNode()
-    new_master_tree.add_child(new_a_tree)
-    new_master_tree.add_child(new_b_tree)
-
-    print(new_master_tree.robinson_foulds(master_tree)[0])
-    print(new_master_tree)
 
 
 if __name__ == "__main__":
