@@ -1,0 +1,97 @@
+IQ-TREE 1.6.12 built Aug 15 2019
+
+Input file name: toy.subset2.aln
+User tree file name: toy.subset2.newick
+Type of analysis: tree reconstruction
+Random seed number: 804494
+
+REFERENCES
+----------
+
+To cite IQ-TREE please use:
+
+Lam-Tung Nguyen, Heiko A. Schmidt, Arndt von Haeseler, and Bui Quang Minh
+(2015) IQ-TREE: A fast and effective stochastic algorithm for estimating
+maximum likelihood phylogenies. Mol Biol Evol, 32:268-274.
+https://doi.org/10.1093/molbev/msu300
+
+SEQUENCE ALIGNMENT
+------------------
+
+Input data: 9 sequences with 204 amino-acid sites
+Number of constant sites: 34 (= 16.6667% of all sites)
+Number of invariant (constant or ambiguous constant) sites: 34 (= 16.6667% of all sites)
+Number of parsimony informative sites: 129
+Number of distinct site patterns: 182
+
+SUBSTITUTION PROCESS
+--------------------
+
+Mixture model of substitution: MIX{LG+FC10pi1,LG+FC10pi2,LG+FC10pi3,LG+FC10pi4,LG+FC10pi5,LG+FC10pi6,LG+FC10pi7,LG+FC10pi8,LG+FC10pi9,LG+FC10pi10}+G4
+
+  No  Component      Rate    Weight   Parameters
+   1  LG+FC10pi1    1.0000   0.0245   LG+FC10pi1
+   2  LG+FC10pi2    1.0000   0.3761   LG+FC10pi2
+   3  LG+FC10pi3    1.0000   0.0003   LG+FC10pi3
+   4  LG+FC10pi4    1.0000   0.0991   LG+FC10pi4
+   5  LG+FC10pi5    1.0000   0.1051   LG+FC10pi5
+   6  LG+FC10pi6    1.0000   0.1378   LG+FC10pi6
+   7  LG+FC10pi7    1.0000   0.1131   LG+FC10pi7
+   8  LG+FC10pi8    1.0000   0.0358   LG+FC10pi8
+   9  LG+FC10pi9    1.0000   0.1059   LG+FC10pi9
+  10  LG+FC10pi10   1.0000   0.0023   LG+FC10pi10
+
+Model of rate heterogeneity: Gamma with 4 categories
+Gamma shape alpha: 0.5410
+
+ Category  Relative_rate  Proportion
+  1         0.0412         0.2500
+  2         0.2778         0.2500
+  3         0.8480         0.2500
+  4         2.8330         0.2500
+Relative rates are computed as MEAN of the portion of the Gamma distribution falling in the category.
+
+USER TREE
+---------
+
+Log-likelihood of the tree: -3341.3925 (s.e. 103.8588)
+Unconstrained log-likelihood (without tree): -1041.3981
+Number of free parameters (#branches + #model parameters): 25
+Akaike information criterion (AIC) score: 6732.7850
+Corrected Akaike information criterion (AICc) score: 6740.0884
+Bayesian information criterion (BIC) score: 6815.7380
+
+Total tree length (sum of branch lengths): 14.7425
+Sum of internal branch lengths: 5.1728 (35.0874% of tree length)
+
+NOTE: Tree is UNROOTED although outgroup taxon 'HYPBU_1_PE343' is drawn at root
+
++-----------------------------HYPBU_1_PE343
+| (63)
+|                                            +-----THENV_1_PE1263
+|                        +-------------------| (100)
+|                        |                   +--PYRAE_1_PE1384
+|  +---------------------| (92)
+|  |                     +--------------------------------CALMQ_1_PE1710
++--| (36)
+|  |        +--------------------------KORCO_1_PE947
+|  +--------|
+|           +----------------THEPD_2_PE333
+|
+|              +----METS5_1_PE1471
++--------------| (97)
+               |    +------------PITOR1_1_PE288
+               +----| (69)
+                    +-----SULSO_1_PE987
+
+Tree in newick format:
+
+(HYPBU_1_PE343:1.9883203315,(((THENV_1_PE1263:0.4163443842,PYRAE_1_PE1384:0.1923179302)100:1.3481921276,CALMQ_1_PE1710:2.1992357608)92:1.5169637204,(KORCO_1_PE947:1.8439732126,THEPD_2_PE333:1.1708066983):0.6312210621)36:0.2543474524,(METS5_1_PE1471:0.3928679598,(PITOR1_1_PE288:0.9047450679,SULSO_1_PE987:0.4611165385)69:0.3769065467)97:1.0451202083)63;
+
+TIME STAMP
+----------
+
+Date and time: Wed Aug  9 14:54:55 2023
+Total CPU time used: 0.528161 seconds (0h:0m:0s)
+Total wall-clock time used: 0.276116 seconds (0h:0m:0s)
+

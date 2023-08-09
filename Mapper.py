@@ -132,9 +132,9 @@ if __name__ == "__main__":
     # emulating commandline arguments for development
     sys.argv = [
         "Mapper.py",
-        "-m", "master.tree",
-        "-a", "a.tree",
-        "-b", "b.tree"
+        "-m", "data/Hector/master.tree",
+        "-a", "data/Hector/a.tree",
+        "-b", "data/Hector/b.tree"
     ]
 
     arguments = parser.parse_args()
