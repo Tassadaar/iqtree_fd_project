@@ -37,6 +37,18 @@ def fix_topology(input_tree, reference_tree):
     return tree_copy
 
 
+def make_list(increment):
+    result = []
+    sig_fig = len(str(increment)) - 2
+    current_value = increment
+
+    while round(current_value, sig_fig) < 1.0:
+        result.append(round(current_value, sig_fig))
+        current_value += increment
+
+    return result
+
+
 def main(args):
 
     try:
@@ -48,23 +60,56 @@ def main(args):
         b_tree = Tree(args.b_tree)
 
         for subtree in master_tree.get_children():
+
             if subtree.get_leaf_names() == a_tree.get_leaf_names():
                 sub_a_tree = subtree
+
             if subtree.get_leaf_names() == b_tree.get_leaf_names():
                 sub_b_tree = subtree
 
         new_a_tree = fix_topology(a_tree, sub_a_tree)
         new_b_tree = fix_topology(b_tree, sub_b_tree)
 
-        # reconstruct master tree
-        new_master_tree = TreeNode()
-        new_master_tree.add_child(new_a_tree)
-        new_master_tree.add_child(new_b_tree)
+        trees = []
+        proportions_a = make_list(args.increment)
+        proportions_b = make_list(args.increment)
+        a_branch = new_a_tree.get_children()[0].dist + new_a_tree.get_children()[1].dist
+        b_branch = new_b_tree.get_children()[0].dist + new_b_tree.get_children()[1].dist
 
-        assert new_master_tree.robinson_foulds(master_tree)[0] == 0, "The new master tree is not the same!"
+        print(f"branch a: {a_branch}, branch b: {b_branch}\n")
 
-        print(f"Reference master tree:{master_tree} \nSubtree A:{a_tree} \nSubtree B:{b_tree}"
-              f"\nNew master tree:{new_master_tree}")
+        for alpha in proportions_a:
+            new_a_tree.get_children()[0].dist = a_branch * alpha
+            new_a_tree.get_children()[1].dist = a_branch * (1 - alpha)
+
+            for beta in proportions_b:
+                new_b_tree.get_children()[0].dist = b_branch * beta
+                new_b_tree.get_children()[1].dist = b_branch * (1 - beta)
+
+                # reconstruct master tree
+                new_master_tree = TreeNode(dist=0.1)
+                new_master_tree.add_child(copy.deepcopy(new_a_tree))
+                new_master_tree.add_child(copy.deepcopy(new_b_tree))
+
+                assert new_master_tree.robinson_foulds(master_tree)[0] == 0, "The new master tree is not the same!"
+
+                trees.append(new_master_tree)
+
+        # print branch lengths for each tree
+        tree_count = 1
+
+        for tree in trees:
+            print(f"Tree {tree_count}")
+
+            for child in tree.get_children():
+
+                for grandchild in child.get_children():
+                    print(grandchild.dist)
+
+            print("\n")
+
+            tree.render(file_name=f"{tree_count}_tree.png", units="px")
+            tree_count += 1
 
     except AssertionError as e:
         print(f"Oops! {e}")
@@ -82,6 +127,7 @@ if __name__ == "__main__":
     parser.add_argument("-m", "--master_tree", required=True)
     parser.add_argument("-a", "--a_tree", required=True)
     parser.add_argument("-b", "--b_tree", required=True)
+    parser.add_argument("-i", "--increment", required=False, default=0.1)
 
     # emulating commandline arguments for development
     sys.argv = [
