@@ -37,22 +37,11 @@ def fix_topology(input_tree, reference_tree):
     return tree_copy
 
 
-def make_list(increment):
-    result = []
-    sig_fig = len(str(increment)) - 2
-    current_value = increment
-
-    while round(current_value, sig_fig) < 1.0:
-        result.append(round(current_value, sig_fig))
-        current_value += increment
-
-    return result
-
-
 def main(args):
 
     try:
         master_tree = Tree(args.master_tree)
+        denominator = int(1 / args.increment)
 
         assert len(master_tree.get_children()) == 2, "Master tree must be rooted!"
 
@@ -71,18 +60,17 @@ def main(args):
         new_b_tree = fix_topology(b_tree, sub_b_tree)
 
         trees = []
-        proportions_a = make_list(args.increment)
-        proportions_b = make_list(args.increment)
+        proportions = [x / denominator for x in range(1, denominator)]
         a_branch = new_a_tree.get_children()[0].dist + new_a_tree.get_children()[1].dist
         b_branch = new_b_tree.get_children()[0].dist + new_b_tree.get_children()[1].dist
 
         print(f"branch a: {a_branch}, branch b: {b_branch}\n")
 
-        for alpha in proportions_a:
+        for alpha in proportions:
             new_a_tree.get_children()[0].dist = a_branch * alpha
             new_a_tree.get_children()[1].dist = a_branch * (1 - alpha)
 
-            for beta in proportions_b:
+            for beta in proportions:
                 new_b_tree.get_children()[0].dist = b_branch * beta
                 new_b_tree.get_children()[1].dist = b_branch * (1 - beta)
 
