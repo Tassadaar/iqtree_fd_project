@@ -1,6 +1,7 @@
 import sys
 import copy
 import argparse
+from itertools import product
 from ete3 import Tree, TreeNode
 
 
@@ -66,22 +67,25 @@ def main(args):
 
         print(f"branch a: {a_branch}, branch b: {b_branch}\n")
 
-        for alpha in proportions:
+        # get alpha and beta from a cartesian product of proportions
+        for alpha, beta in product(proportions, repeat=2):
+
+            # set new branch lengths for a
             new_a_tree.get_children()[0].dist = a_branch * alpha
             new_a_tree.get_children()[1].dist = a_branch * (1 - alpha)
 
-            for beta in proportions:
-                new_b_tree.get_children()[0].dist = b_branch * beta
-                new_b_tree.get_children()[1].dist = b_branch * (1 - beta)
+            # set new branch lengths for b
+            new_b_tree.get_children()[0].dist = b_branch * beta
+            new_b_tree.get_children()[1].dist = b_branch * (1 - beta)
 
-                # reconstruct master tree
-                new_master_tree = TreeNode(dist=0.1)
-                new_master_tree.add_child(copy.deepcopy(new_a_tree))
-                new_master_tree.add_child(copy.deepcopy(new_b_tree))
+            # reconstruct master tree
+            new_master_tree = TreeNode(dist=0.1)
+            new_master_tree.add_child(copy.deepcopy(new_a_tree))
+            new_master_tree.add_child(copy.deepcopy(new_b_tree))
 
-                assert new_master_tree.robinson_foulds(master_tree)[0] == 0, "The new master tree is not the same!"
+            assert new_master_tree.robinson_foulds(master_tree)[0] == 0, "The new master tree is not the same!"
 
-                trees.append(new_master_tree)
+            trees.append(new_master_tree)
 
         # print branch lengths for each tree
         tree_count = 1
