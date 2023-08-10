@@ -77,7 +77,36 @@ def get_avg_weights():
             avg = (weights[words[1]] + float(words[3])) / 2
             weights[words[1]] = avg
 
-    print(weights)
+    return weights
+
+
+def get_avg_alpha():
+    a_info = "data/Dandan/toy.subset1.aln.iqtree"
+    b_info = "data/Dandan/toy.subset2.aln.iqtree"
+
+    alpha = 0
+
+    with open(a_info, "r") as a_file:
+
+        for line in a_file:
+
+            if "Gamma shape alpha" not in line:
+                continue
+
+            words = line.split()
+            alpha = float(words[3])
+
+    with open(b_info, "r") as b_file:
+
+        for line in b_file:
+
+            if "Gamma shape alpha" not in line:
+                continue
+
+            words = line.split()
+            alpha = (alpha + float(words[3])) / 2
+
+    return alpha
 
 
 def main(args):
@@ -168,4 +197,4 @@ if __name__ == "__main__":
 
     arguments = parser.parse_args()
     # main(arguments)
-    get_avg_weights()
+    get_avg_alpha()
