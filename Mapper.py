@@ -38,6 +38,48 @@ def fix_topology(input_tree, reference_tree):
     return tree_copy
 
 
+def get_avg_weights():
+    a_info = "data/Dandan/toy.subset1.aln.iqtree"
+    b_info = "data/Dandan/toy.subset2.aln.iqtree"
+
+    weights = {}
+
+    with open(a_info, "r") as a_file:
+        previous_line = ""
+
+        for line in a_file:
+
+            if "No  Component      Rate    Weight   Parameters" not in previous_line:
+                previous_line = line
+                continue
+
+            words = line.split()
+
+            if not words:
+                break
+
+            weights[words[1]] = float(words[3])
+
+    with open(b_info, "r") as b_file:
+        previous_line = ""
+
+        for line in b_file:
+
+            if "No  Component      Rate    Weight   Parameters" not in previous_line:
+                previous_line = line
+                continue
+
+            words = line.split()
+
+            if not words:
+                break
+
+            avg = (weights[words[1]] + float(words[3])) / 2
+            weights[words[1]] = avg
+
+    print(weights)
+
+
 def main(args):
 
     try:
@@ -125,4 +167,5 @@ if __name__ == "__main__":
     ]
 
     arguments = parser.parse_args()
-    main(arguments)
+    # main(arguments)
+    get_avg_weights()
