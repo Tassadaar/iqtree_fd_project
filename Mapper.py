@@ -42,10 +42,10 @@ def main(args):
 
     try:
         master_tree = Tree(args.master_tree)
+
+        assert len(master_tree.get_children()) == 2, f"Master tree must be rooted!\n {master_tree}"
+
         denominator = int(1 / args.increment)
-
-        assert len(master_tree.get_children()) == 2, "Master tree must be rooted!"
-
         a_tree = Tree(args.a_tree)
         b_tree = Tree(args.b_tree)
 
@@ -57,8 +57,15 @@ def main(args):
             if subtree.get_leaf_names() == b_tree.get_leaf_names():
                 sub_b_tree = subtree
 
-        new_a_tree = fix_topology(a_tree, sub_a_tree)
-        new_b_tree = fix_topology(b_tree, sub_b_tree)
+        if a_tree.robinson_foulds(sub_a_tree)[0] != 0:
+            new_a_tree = fix_topology(a_tree, sub_a_tree)
+        else:
+            new_a_tree = a_tree
+
+        if b_tree.robinson_foulds(sub_b_tree)[0] != 0:
+            new_b_tree = fix_topology(b_tree, sub_b_tree)
+        else:
+            new_b_tree = b_tree
 
         trees = []
         proportions = [x / denominator for x in range(1, denominator)]
@@ -87,21 +94,8 @@ def main(args):
 
             trees.append(new_master_tree)
 
-        # print branch lengths for each tree
-        tree_count = 1
-
-        for tree in trees:
-            print(f"Tree {tree_count}")
-
-            for child in tree.get_children():
-
-                for grandchild in child.get_children():
-                    print(grandchild.dist)
-
-            print("\n")
-
-            tree.render(file_name=f"{tree_count}_tree.png", units="px")
-            tree_count += 1
+        # print number of trees generated
+        print(f"{len(trees)} tree were generated")
 
     except AssertionError as e:
         print(f"Oops! {e}")
@@ -110,6 +104,7 @@ def main(args):
         print(f"Panda-monium! {e}")
 
     finally:
+        print("\nSystem exiting...")
         sys.exit()
 
 
@@ -124,9 +119,9 @@ if __name__ == "__main__":
     # emulating commandline arguments for development
     sys.argv = [
         "Mapper.py",
-        "-m", "data/Hector/master.tree",
-        "-a", "data/Hector/a.tree",
-        "-b", "data/Hector/b.tree"
+        "-m", "data/Dandan/rooted_toy.newick",
+        "-a", "data/Dandan/toy.subset1.newick",
+        "-b", "data/Dandan/toy.subset2.newick"
     ]
 
     arguments = parser.parse_args()
