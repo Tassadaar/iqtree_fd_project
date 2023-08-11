@@ -2,6 +2,7 @@ import sys
 import copy
 import argparse
 from itertools import product
+import re
 from ete3 import Tree, TreeNode
 
 
@@ -38,75 +39,39 @@ def fix_topology(input_tree, reference_tree):
     return tree_copy
 
 
-def get_avg_weights():
-    a_info = "data/Dandan/toy.subset1.aln.iqtree"
-    b_info = "data/Dandan/toy.subset2.aln.iqtree"
+def get_info(in_file):
+    weights = None
+    alpha = None
 
-    weights = {}
+    with open(in_file, "r") as file:
 
-    with open(a_info, "r") as a_file:
-        previous_line = ""
+        for line in file:
 
-        for line in a_file:
+            if "Mixture weights:" in line:
+                words = line.split()
+                weights = words[2:]
+                print(weights)
 
-            if "No  Component      Rate    Weight   Parameters" not in previous_line:
-                previous_line = line
-                continue
-
-            words = line.split()
-
-            if not words:
+            if "Gamma shape alpha:" in line:
+                words = line.split()
+                alpha = float(words[3])
+                print(alpha)
                 break
 
-            weights[words[1]] = float(words[3])
-
-    with open(b_info, "r") as b_file:
-        previous_line = ""
-
-        for line in b_file:
-
-            if "No  Component      Rate    Weight   Parameters" not in previous_line:
-                previous_line = line
-                continue
-
-            words = line.split()
-
-            if not words:
-                break
-
-            avg = (weights[words[1]] + float(words[3])) / 2
-            weights[words[1]] = avg
-
-    return weights
+    return weights, alpha
 
 
-def get_avg_alpha():
-    a_info = "data/Dandan/toy.subset1.aln.iqtree"
-    b_info = "data/Dandan/toy.subset2.aln.iqtree"
+def get_averages():
+    a_log = "data/Dandan/toy.subset1.aln.log"
+    b_log = "data/Dandan/toy.subset2.aln.log"
 
-    alpha = 0
+    a_weights, a_alpha = get_info(a_log)
+    b_weights, b_alpha = get_info(b_log)
 
-    with open(a_info, "r") as a_file:
+    avg_weights = [(float(a_weight) + float(b_weight)) / 2 for a_weight, b_weight in zip(a_weights, b_weights)]
+    avg_alpha = (a_alpha + b_alpha) / 2
 
-        for line in a_file:
-
-            if "Gamma shape alpha" not in line:
-                continue
-
-            words = line.split()
-            alpha = float(words[3])
-
-    with open(b_info, "r") as b_file:
-
-        for line in b_file:
-
-            if "Gamma shape alpha" not in line:
-                continue
-
-            words = line.split()
-            alpha = (alpha + float(words[3])) / 2
-
-    return alpha
+    return avg_weights, avg_alpha
 
 
 def main(args):
@@ -197,4 +162,4 @@ if __name__ == "__main__":
 
     arguments = parser.parse_args()
     # main(arguments)
-    get_avg_alpha()
+    get_averages()

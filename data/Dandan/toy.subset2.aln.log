@@ -1,0 +1,55 @@
+IQ-TREE multicore version 1.6.12 for Mac OS X 64-bit built Aug 15 2019
+Developed by Bui Quang Minh, Nguyen Lam Tung, Olga Chernomor,
+Heiko Schmidt, Dominik Schrempf, Michael Woodhams.
+
+Host:    te806.wpa.dal.ca (AVX2, FMA3, 16 GB RAM)
+Command: iqtree -nt 2 -s toy.subset2.aln -m LG+C10+G -mwopt -te toy.subset2.newick
+Seed:    804494 (Using SPRNG - Scalable Parallel Random Number Generator)
+Time:    Wed Aug  9 14:54:54 2023
+Kernel:  AVX+FMA - 2 threads (8 CPU cores detected)
+
+Reading alignment file toy.subset2.aln ... Fasta format detected
+Alignment most likely contains protein sequences
+Alignment has 9 sequences with 204 columns, 182 distinct patterns
+129 parsimony-informative, 41 singleton sites, 34 constant sites
+                Gap/Ambiguity  Composition  p-value
+   1  HYPBU_1_PE343     1.47%    passed     43.66%
+   2  THENV_1_PE1263    1.47%    passed     45.74%
+   3  PYRAE_1_PE1384    1.47%    passed     68.99%
+   4  CALMQ_1_PE1710    0.00%    passed     29.82%
+   5  METS5_1_PE1471    0.49%    passed     88.73%
+   6  PITOR1_1_PE288    0.49%    passed     36.64%
+   7  SULSO_1_PE987     0.00%    passed     90.31%
+   8  KORCO_1_PE947     1.47%    passed     82.63%
+   9  THEPD_2_PE333     1.47%    passed     68.90%
+****  TOTAL             0.93%  0 sequences failed composition chi2 test (p-value<5%; df=19)
+Reading input tree file toy.subset2.newick ... rooted tree
+Model LG+C10+G is alias for LG+POISSON+G+FMIX{C10pi1:1:0.1191344178,C10pi2:1:0.0874372456,C10pi3:1:0.1037105070,C10pi4:1:0.0922584809,C10pi5:1:0.1070492801,C10pi6:1:0.1329945166,C10pi7:1:0.0538028458,C10pi8:1:0.0691986212,C10pi9:1:0.1319937434,C10pi10:1:0.1024203429}+G
+Converting rooted to unrooted tree...
+
+NOTE: 11 MB RAM (0 GB) is required!
+Estimate model parameters (epsilon = 0.010)
+1. Initial log-likelihood: -3443.653
+2. Current log-likelihood: -3342.842
+3. Current log-likelihood: -3341.474
+4. Current log-likelihood: -3341.409
+5. Current log-likelihood: -3341.399
+Optimal log-likelihood: -3341.393
+Mixture weights: 0.024 0.376 0.000 0.099 0.105 0.138 0.113 0.036 0.106 0.002
+Gamma shape alpha: 0.541
+Parameters optimization took 5 rounds (0.266 sec)
+BEST SCORE FOUND : -3341.393
+Total tree length: 14.742
+
+Total number of iterations: 0
+CPU time used for tree search: 0.000 sec (0h:0m:0s)
+Wall-clock time used for tree search: 0.000 sec (0h:0m:0s)
+Total CPU time used: 0.528 sec (0h:0m:0s)
+Total wall-clock time used: 0.275 sec (0h:0m:0s)
+
+Analysis results written to: 
+  IQ-TREE report:                toy.subset2.aln.iqtree
+  Maximum-likelihood tree:       toy.subset2.aln.treefile
+  Screen log file:               toy.subset2.aln.log
+
+Date and Time: Wed Aug  9 14:54:55 2023
