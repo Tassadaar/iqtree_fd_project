@@ -22,7 +22,7 @@ def fix_topology(input_tree, reference_tree):
             return tree_copy
 
         # scenario 2: leaf group is valid but multiple taxa
-        outgroup = leaf_group.pop().get_common_ancestor(leaf_group)
+        outgroup = tree_copy.get_common_ancestor(*leaf_group)
         tree_copy.set_outgroup(outgroup)
         return tree_copy
 
@@ -161,5 +161,4 @@ if __name__ == "__main__":
     ]
 
     arguments = parser.parse_args()
-    # main(arguments)
-    get_averages()
+    main(arguments)

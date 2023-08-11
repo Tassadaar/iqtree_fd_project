@@ -15,11 +15,17 @@ class Test(TestCase):
     sub_a_tree = master_tree.get_children()[0]
     sub_b_tree = master_tree.get_children()[1]
 
-    def test_fix_topology_unrooted_single_outgroup(self):
+    def test_fix_topology_unrooted_scenario_1(self):
         new_tree = fix_topology(self.a_tree, self.sub_a_tree)
         self.assertEqual(0, new_tree.robinson_foulds(self.sub_a_tree)[0], "Topologies don't match!")
 
-    def test_fix_topology_unrooted_multiple_outgroup(self):
+    def test_fix_topology_unrooted_scenario_2(self):
+        alt_b_tree = Tree("(((7:0.705912,8:0.875553)1:0.313682,(9:0.227179,10:0.22797)1:0.403535)1:0.140418,6:0.498266,"
+                          "(4:0.268157,5:0.285967)1:0.231266);")
+        new_tree = fix_topology(alt_b_tree, self.sub_b_tree)
+        self.assertEqual(0, new_tree.robinson_foulds(self.sub_b_tree)[0], "Topologies don't match!")
+
+    def test_fix_topology_unrooted_scenario_3(self):
         new_tree = fix_topology(self.b_tree, self.sub_b_tree)
         self.assertEqual(0, new_tree.robinson_foulds(self.sub_b_tree)[0], "Topologies don't match!")
 
