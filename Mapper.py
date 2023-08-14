@@ -1,13 +1,11 @@
 import sys
-import copy
 import argparse
 from itertools import product
-import re
 from ete3 import Tree, TreeNode
 
 
 def fix_topology(input_tree, reference_tree):
-    tree_copy = copy.deepcopy(input_tree)
+    tree_copy = input_tree.copy("deepcopy")
     copied_leaves = [child.get_leaf_names() for child in tree_copy.get_children()]
     reference_leaves = [child.get_leaf_names() for child in reference_tree.get_children()]
 
@@ -123,8 +121,8 @@ def main(args):
 
             # reconstruct master tree
             new_master_tree = TreeNode(dist=0.1)
-            new_master_tree.add_child(copy.deepcopy(new_a_tree))
-            new_master_tree.add_child(copy.deepcopy(new_b_tree))
+            new_master_tree.add_child(new_a_tree.copy("deepcopy"))
+            new_master_tree.add_child(new_b_tree.copy("deepcopy"))
 
             assert new_master_tree.robinson_foulds(master_tree)[0] == 0, "The new master tree is not the same!"
 
