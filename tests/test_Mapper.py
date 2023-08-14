@@ -29,8 +29,21 @@ class Test(TestCase):
         new_tree = fix_topology(self.b_tree, self.sub_b_tree)
         self.assertEqual(0, new_tree.robinson_foulds(self.sub_b_tree)[0], "Topologies don't match!")
 
-    def test_fix_topology_rooted_single_outgroup(self):
-        pass
+    def test_fix_topology_rooted_scenario_1(self):
+        alt_a_tree = self.a_tree.copy("deepcopy")
+        alt_a_tree.set_outgroup("1")
+        new_tree = fix_topology(alt_a_tree, self.sub_a_tree)
+        self.assertEqual(0, new_tree.robinson_foulds(self.sub_a_tree)[0], "Topologies don't match!")
 
-    def test_fix_topology_rooted_multiple_outgroup(self):
-        pass
+    def test_fix_topology_rooted_scenario_2(self):
+        alt_a_tree = self.a_tree.copy("deepcopy")
+        alt_a_tree.set_outgroup("1")
+        alt_a_tree.set_outgroup(alt_a_tree.get_common_ancestor("3", "23"))
+        new_tree = fix_topology(alt_a_tree, self.sub_a_tree)
+        self.assertEqual(0, new_tree.robinson_foulds(self.sub_a_tree)[0], "Topologies don't match!")
+
+    def test_fix_topology_rooted_scenario_3(self):
+        alt_b_tree = self.b_tree.copy("deepcopy")
+        alt_b_tree.set_outgroup("4")
+        new_tree = fix_topology(alt_b_tree, self.sub_b_tree)
+        self.assertEqual(0, new_tree.robinson_foulds(self.sub_a_tree)[0], "Topologies don't match!")
