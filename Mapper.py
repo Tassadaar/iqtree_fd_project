@@ -38,35 +38,41 @@ def fix_topology(input_tree, reference_tree):
 
 
 def get_info(in_file):
-    weights = None
-    alpha = None
+    weights = {}
+    alpha = 0
 
     with open(in_file, "r") as file:
+        section_found = False
 
         for line in file:
 
-            if "Mixture weights:" in line:
+            if "No  Component      Rate    Weight   Parameters" in line:
+                section_found = True
+                continue
+
+            if line == "\n":
+                section_found = False
+
+            if section_found:
                 words = line.split()
-                weights = words[2:]
-                print(weights)
+                weights[words[4]] = float(words[3])
 
             if "Gamma shape alpha:" in line:
                 words = line.split()
                 alpha = float(words[3])
-                print(alpha)
                 break
 
     return weights, alpha
 
 
 def get_averages():
-    a_log = "data/Dandan/toy.subset1.aln.log"
-    b_log = "data/Dandan/toy.subset2.aln.log"
+    a_log = "data/Dandan/toy.subset1.aln.iqtree"
+    b_log = "data/Dandan/toy.subset2.aln.iqtree"
 
     a_weights, a_alpha = get_info(a_log)
     b_weights, b_alpha = get_info(b_log)
 
-    avg_weights = [(float(a_weight) + float(b_weight)) / 2 for a_weight, b_weight in zip(a_weights, b_weights)]
+    avg_weights = {key: (a_weight + b_weights[key]) / 2 for key, a_weight in a_weights.items()}
     avg_alpha = (a_alpha + b_alpha) / 2
 
     return avg_weights, avg_alpha
@@ -159,4 +165,5 @@ if __name__ == "__main__":
     ]
 
     arguments = parser.parse_args()
-    main(arguments)
+    # main(arguments)
+    get_averages()
