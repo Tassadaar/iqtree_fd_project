@@ -1,5 +1,7 @@
 import sys
 import argparse
+import subprocess
+import concurrent.futures
 from itertools import product
 from ete3 import Tree, TreeNode
 
@@ -101,8 +103,8 @@ def write_nexus_file(weights):
                 words[1] = "fundi_" + words[1]
                 out_freqs.append(words)
 
-    weight_line = [f"model {model} = POISSON+G+FMIX{{"]
-    model_line = [f"model {model}Opt = POISSON+G+FMIX{{"]
+    weight_line = [f"model fundi_{model} = POISSON+G+FMIX{{"]
+    model_line = [f"model fundi_{model}Opt = POISSON+G+FMIX{{"]
 
     for index, weight in weights.items():
         weight_line.append(f"fundi_{model}pi{index}:1:{weight}")
@@ -188,6 +190,41 @@ def main(args):
 
         # print number of trees generated
         print(f"{len(trees)} tree were generated")
+
+        # get average weights and alpha
+        avg_weights, avg_alpha = get_averages()
+        print(f"\n{avg_weights}\n{avg_alpha}")
+
+        # generate nexus file:
+        write_nexus_file(avg_weights)
+
+        # second iqtree commands
+        commands = []
+
+        i = 1
+        for tree in trees:
+
+            tree.render(f"test_{i}.png")
+
+            with open(f"test_{i}.tree", "w") as tree_file:
+                tree_file.write(tree.write())
+
+            iqtree_cmd = [
+                "iqtree",
+                "-s", "data/Dandan/toy.phylip",
+                "--tree-fix", tree_file.name,
+                "-m", f"LG+fundi_C10+G{{{avg_alpha}}}",
+                "--mdef", "test.nex",
+                "-T", "8",
+                "--prefix", f"test_{i}",
+            ]
+
+            commands.append(iqtree_cmd)
+            i += 1
+
+        # second iqtree run
+        for command in commands:
+            subprocess.run(command)
 
     except AssertionError as e:
         print(f"Oops! {e}")
