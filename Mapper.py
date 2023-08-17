@@ -55,7 +55,7 @@ def get_info(in_file):
 
             if section_found:
                 words = line.split()
-                weights[words[4]] = float(words[3])
+                weights[words[0]] = float(words[3])
 
             if "Gamma shape alpha:" in line:
                 words = line.split()
@@ -104,19 +104,16 @@ def write_nexus_file(weights):
     weight_line = [f"model {model} = POISSON+G+FMIX{{"]
     model_line = [f"model {model}Opt = POISSON+G+FMIX{{"]
 
-    i = 1
-    for name, weight in weights.items():
-        weight_line.append(f"fundi_{model}pi{i}:1:{weight}")
-        model_line.append(f"fundi_{model}pi{i}")
+    for index, weight in weights.items():
+        weight_line.append(f"fundi_{model}pi{index}:1:{weight}")
+        model_line.append(f"fundi_{model}pi{index}")
 
-        if name != list(weights.keys())[-1]:
+        if index != list(weights.keys())[-1]:
             weight_line.append(",")
             model_line.append(",")
         else:
             weight_line.append("};")
             model_line.append("};")
-
-        i += 1
 
     out_model.append(weight_line)
     out_model.append(model_line)
@@ -220,6 +217,5 @@ if __name__ == "__main__":
     ]
 
     arguments = parser.parse_args()
-    # main(arguments)
-    weights, alpha = get_averages()
-    write_nexus_file(weights)
+    main(arguments)
+
