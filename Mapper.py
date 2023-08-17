@@ -78,6 +78,61 @@ def get_averages():
     return avg_weights, avg_alpha
 
 
+def write_nexus_file(weights):
+    out_freqs = []
+    out_model = []
+    model = "C10"
+
+    with open("data/modelmixtureCAT.nex", "r") as models:
+        section_found = False
+
+        for line in models:
+
+            if f"CAT-{model} profile mixture model" in line:
+                section_found = True
+                continue
+
+            if section_found:
+
+                if line == "\n":
+                    break
+
+                words = line.split()
+                words[1] = "fundi_" + words[1]
+                out_freqs.append(words)
+
+    weight_line = [f"model {model} = POISSON+G+FMIX{{"]
+    model_line = [f"model {model}Opt = POISSON+G+FMIX{{"]
+
+    i = 1
+    for name, weight in weights.items():
+        weight_line.append(f"fundi_{model}pi{i}:1:{weight}")
+        model_line.append(f"fundi_{model}pi{i}")
+
+        if name != list(weights.keys())[-1]:
+            weight_line.append(",")
+            model_line.append(",")
+        else:
+            weight_line.append("};")
+            model_line.append("};")
+
+        i += 1
+
+    out_model.append(weight_line)
+    out_model.append(model_line)
+
+    with open("test.nex", "w") as nex_file:
+        nex_file.write("#nexus\nbegin models;\n")
+
+        for line in out_freqs:
+            nex_file.write(" ".join(line) + "\n")
+
+        for line in out_model:
+            nex_file.write("".join(line) + "\n")
+
+        nex_file.write("end;")
+
+
 def main(args):
 
     try:
@@ -166,4 +221,5 @@ if __name__ == "__main__":
 
     arguments = parser.parse_args()
     # main(arguments)
-    get_averages()
+    weights, alpha = get_averages()
+    write_nexus_file(weights)
