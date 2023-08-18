@@ -1,7 +1,6 @@
 import sys
 import argparse
 import subprocess
-import concurrent.futures
 from itertools import product
 from ete3 import Tree, TreeNode
 
@@ -81,10 +80,11 @@ def get_averages():
 
 
 def write_nexus_file(weights):
+    model = "C10"
     out_freqs = []
     out_model = []
-    model = "C10"
 
+    # generate frequency section
     with open("data/modelmixtureCAT.nex", "r") as models:
         section_found = False
 
@@ -96,30 +96,26 @@ def write_nexus_file(weights):
 
             if section_found:
 
+                # the section ends if blank line is encountered
                 if line == "\n":
                     break
 
                 words = line.split()
-                words[1] = "fundi_" + words[1]
+                words[1] = f"fundi_{words[1]}"
                 out_freqs.append(words)
 
+    # generate model section
     weight_line = [f"model fundi_{model} = POISSON+G+FMIX{{"]
     model_line = [f"model fundi_{model}Opt = POISSON+G+FMIX{{"]
 
     for index, weight in weights.items():
-        weight_line.append(f"fundi_{model}pi{index}:1:{weight}")
-        model_line.append(f"fundi_{model}pi{index}")
-
-        if index != list(weights.keys())[-1]:
-            weight_line.append(",")
-            model_line.append(",")
-        else:
-            weight_line.append("};")
-            model_line.append("};")
+        weight_line.append(f"fundi_{model}pi{index}:1:{weight}" + ("," if index != list(weights.keys())[-1] else "};"))
+        model_line.append(f"fundi_{model}pi{index}" + ("," if index != list(weights.keys())[-1] else "};"))
 
     out_model.append(weight_line)
     out_model.append(model_line)
 
+    # write to file
     with open("test.nex", "w") as nex_file:
         nex_file.write("#nexus\nbegin models;\n")
 
