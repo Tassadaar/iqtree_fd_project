@@ -212,6 +212,7 @@ def main(args):
                 "-m", f"LG+fundi_C10+G{{{avg_alpha}}}",
                 "--mdef", "test.nex",
                 "-T", "8",
+                "-blfix",
                 "--prefix", f"test_{i}",
             ]
 
