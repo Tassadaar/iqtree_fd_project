@@ -128,6 +128,36 @@ def write_nexus_file(weights):
         nex_file.write("end;")
 
 
+def run_iqtree(trees, avg_alpha):
+    commands = []
+
+    i = 1
+    for tree in trees:
+
+        tree.render(f"test_{i}.png")
+
+        with open(f"test_{i}.tree", "w") as tree_file:
+            tree_file.write(tree.write())
+
+        iqtree_cmd = [
+            "iqtree",
+            "-s", "data/Dandan/toy.phylip",
+            "--tree-fix", tree_file.name,
+            "-m", f"LG+fundi_C10+G{{{avg_alpha}}}",
+            "--mdef", "test.nex",
+            "-T", "8",
+            "-blfix",
+            "--prefix", f"test_{i}",
+        ]
+
+        commands.append(iqtree_cmd)
+        i += 1
+
+    # second iqtree run
+    for command in commands:
+        subprocess.run(command)
+
+
 def main(args):
 
     try:
@@ -194,34 +224,8 @@ def main(args):
         # generate nexus file:
         write_nexus_file(avg_weights)
 
-        # second iqtree commands
-        commands = []
-
-        i = 1
-        for tree in trees:
-
-            tree.render(f"test_{i}.png")
-
-            with open(f"test_{i}.tree", "w") as tree_file:
-                tree_file.write(tree.write())
-
-            iqtree_cmd = [
-                "iqtree",
-                "-s", "data/Dandan/toy.phylip",
-                "--tree-fix", tree_file.name,
-                "-m", f"LG+fundi_C10+G{{{avg_alpha}}}",
-                "--mdef", "test.nex",
-                "-T", "8",
-                "-blfix",
-                "--prefix", f"test_{i}",
-            ]
-
-            commands.append(iqtree_cmd)
-            i += 1
-
-        # second iqtree run
-        for command in commands:
-            subprocess.run(command)
+        # second iqtree execution
+        run_iqtree(trees, avg_alpha)
 
     except AssertionError as e:
         print(f"Oops! {e}")
