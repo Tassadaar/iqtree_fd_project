@@ -38,7 +38,7 @@ def fix_topology(input_tree, reference_tree):
     return tree_copy
 
 
-def run_iqtree_a(tree_file, alignment):
+def run_iqtree_a(tree_file, alignment, prefix):
 
     iqtree_command = [
         "iqtree",
@@ -47,7 +47,8 @@ def run_iqtree_a(tree_file, alignment):
         "-te", tree_file,
         "-m", "LG+C10+G",
         "-mwopt",
-        "-prec", "N",
+        "-prec", "10",
+        "--prefix", prefix
     ]
 
     subprocess.run(iqtree_command)
@@ -82,8 +83,8 @@ def get_info(in_file):
 
 
 def get_averages():
-    a_log = "data/Dandan/toy.subset1.aln.iqtree"
-    b_log = "data/Dandan/toy.subset2.aln.iqtree"
+    a_log = "test_subset1.iqtree"
+    b_log = "test_subset2.iqtree"
 
     a_weights, a_alpha = get_info(a_log)
     b_weights, b_alpha = get_info(b_log)
@@ -163,6 +164,7 @@ def run_iqtree_b(trees, avg_alpha):
             "-T", "8",
             "-blfix",
             "--prefix", f"test_{i}",
+            "-prec", "10",
         ]
 
         commands.append(iqtree_cmd)
@@ -201,6 +203,10 @@ def main(args):
             new_b_tree = fix_topology(b_tree, sub_b_tree)
         else:
             new_b_tree = b_tree
+
+        # first iqtree execution
+        run_iqtree_a("data/Dandan/toy.subset1.newick", "data/Dandan/toy.subset1.aln", "test_subset1")
+        run_iqtree_a("data/Dandan/toy.subset2.newick", "data/Dandan/toy.subset2.aln", "test_subset2")
 
         trees = []
         proportions = [x / denominator for x in range(1, denominator)]
