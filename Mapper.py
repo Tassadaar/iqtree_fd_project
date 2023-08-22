@@ -5,6 +5,29 @@ from itertools import product
 from ete3 import Tree, TreeNode
 
 
+def get_ref_subtrees():
+    master_tree = Tree("data/Dandan/rooted_toy.newick")
+    def_address = "data/Dandan/toy.def"
+
+    children = master_tree.get_children()
+    leaf_groups = []
+    a_tree = None
+    b_tree = None
+
+    with open(def_address, "r") as def_file:
+
+        for line in def_file:
+            leaf_groups.append(set(line.split()))
+
+    if set(children[0].get_leaf_names()) in leaf_groups:
+        a_tree = children[0]
+
+    if set(children[1].get_leaf_names()) in leaf_groups:
+        b_tree = children[1]
+
+    return a_tree, b_tree
+
+
 def fix_topology(input_tree, reference_tree):
     tree_copy = input_tree.copy("deepcopy")
     copied_leaves = [child.get_leaf_names() for child in tree_copy.get_children()]
@@ -183,8 +206,7 @@ def main(args):
         assert len(master_tree.get_children()) == 2, f"Master tree must be rooted!\n {master_tree}"
 
         denominator = int(1 / args.increment)
-        a_tree = Tree(args.a_tree)
-        b_tree = Tree(args.b_tree)
+        a_tree, b_tree = get_ref_subtrees()
 
         for subtree in master_tree.get_children():
 
@@ -204,9 +226,15 @@ def main(args):
         else:
             new_b_tree = b_tree
 
+        with open("test_a.tree", "w") as a_tree_file:
+            a_tree_file.write(new_a_tree.write())
+
+        with open("test_b.tree", "w") as b_tree_file:
+            b_tree_file.write(new_b_tree.write())
+
         # first iqtree execution
-        run_iqtree_a("data/Dandan/toy.subset1.newick", "data/Dandan/toy.subset1.aln", "test_subset1")
-        run_iqtree_a("data/Dandan/toy.subset2.newick", "data/Dandan/toy.subset2.aln", "test_subset2")
+        run_iqtree_a("test_a.tree", "data/Dandan/toy.subset1.aln", "test_subset1")
+        run_iqtree_a("test_b.tree", "data/Dandan/toy.subset2.aln", "test_subset2")
 
         trees = []
         proportions = [x / denominator for x in range(1, denominator)]
@@ -276,4 +304,3 @@ if __name__ == "__main__":
 
     arguments = parser.parse_args()
     main(arguments)
-
