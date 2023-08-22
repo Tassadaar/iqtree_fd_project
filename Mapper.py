@@ -38,6 +38,21 @@ def fix_topology(input_tree, reference_tree):
     return tree_copy
 
 
+def run_iqtree_a(tree_file, alignment):
+
+    iqtree_command = [
+        "iqtree",
+        "-nt", "2",
+        "-s", alignment,
+        "-te", tree_file,
+        "-m", "LG+C10+G",
+        "-mwopt",
+        "-prec", "N",
+    ]
+
+    subprocess.run(iqtree_command)
+
+
 def get_info(in_file):
     weights = {}
     alpha = 0
@@ -128,7 +143,7 @@ def write_nexus_file(weights):
         nex_file.write("end;")
 
 
-def run_iqtree(trees, avg_alpha):
+def run_iqtree_b(trees, avg_alpha):
     commands = []
 
     i = 1
@@ -219,13 +234,12 @@ def main(args):
 
         # get average weights and alpha
         avg_weights, avg_alpha = get_averages()
-        print(f"\n{avg_weights}\n{avg_alpha}")
 
         # generate nexus file:
         write_nexus_file(avg_weights)
 
         # second iqtree execution
-        run_iqtree(trees, avg_alpha)
+        run_iqtree_b(trees, avg_alpha)
 
     except AssertionError as e:
         print(f"Oops! {e}")
