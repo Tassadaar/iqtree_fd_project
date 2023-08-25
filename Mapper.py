@@ -28,6 +28,49 @@ def get_ref_subtrees():
     return a_tree, b_tree
 
 
+def write_alignment_partitions(alignment_address, new_a_tree, new_b_tree):
+    alignments = {}
+
+    with open(alignment_address, "r") as alignment_file:
+        current_taxon = ""
+        current_alignment = []
+
+        for line in alignment_file:
+
+            if line.startswith(">"):
+
+                if current_taxon and current_alignment:
+                    current_alignment[-1] = current_alignment[-1].strip()
+                    alignments[current_taxon] = "".join(current_alignment)
+                    current_alignment = []
+
+                current_taxon = line[1:-1]
+                continue
+
+            current_alignment.append(line)
+
+        if current_taxon and current_alignment:
+            alignments[current_taxon] = "".join(current_alignment)
+
+    with open("test_a.aln", "w") as new_a_aln_file:
+        a_leaves = new_a_tree.get_leaf_names()
+
+        for taxon, alignment in alignments.items():
+
+            if taxon in a_leaves:
+                new_a_aln_file.write(f">{taxon}\n")
+                new_a_aln_file.write(f"{alignment}\n")
+
+    with open("test_b.aln", "w") as new_b_aln_file:
+        b_leaves = new_b_tree.get_leaf_names()
+
+        for taxon, alignment in alignments.items():
+
+            if taxon in b_leaves:
+                new_b_aln_file.write(f">{taxon}\n")
+                new_b_aln_file.write(f"{alignment}\n")
+
+
 def fix_topology(input_tree, reference_tree):
     tree_copy = input_tree.copy("deepcopy")
     copied_leaves = [child.get_leaf_names() for child in tree_copy.get_children()]
@@ -155,7 +198,7 @@ def write_nexus_file(weights):
     out_model.append(model_line)
 
     # write to file
-    with open("test.nex", "w") as nex_file:
+    with open("test_nex.nex", "w") as nex_file:
         nex_file.write("#nexus\nbegin models;\n")
 
         for line in out_freqs:
@@ -232,9 +275,11 @@ def main(args):
         with open("test_b.tree", "w") as b_tree_file:
             b_tree_file.write(new_b_tree.write())
 
+        write_alignment_partitions("data/Dandan/toy.aln", new_a_tree, new_b_tree)
+
         # first iqtree execution
-        run_iqtree_a("test_a.tree", "data/Dandan/toy.subset1.aln", "test_subset1")
-        run_iqtree_a("test_b.tree", "data/Dandan/toy.subset2.aln", "test_subset2")
+        run_iqtree_a("test_a.tree", "test_a.aln", "test_subset1")
+        run_iqtree_a("test_b.tree", "test_b.aln", "test_subset2")
 
         trees = []
         proportions = [x / denominator for x in range(1, denominator)]
