@@ -5,10 +5,7 @@ from itertools import product
 from ete3 import Tree, TreeNode
 
 
-def get_ref_subtrees():
-    master_tree = Tree("data/Dandan/rooted_toy.newick")
-    def_address = "data/Dandan/toy.def"
-
+def get_ref_subtrees(master_tree, def_address):
     children = master_tree.get_children()
     leaf_groups = []
     a_tree = None
@@ -104,14 +101,14 @@ def fix_topology(input_tree, reference_tree):
     return tree_copy
 
 
-def run_iqtree_a(tree_file, alignment, prefix):
+def run_iqtree_a(tree_file, alignment, prefix, model):
 
     iqtree_command = [
         "iqtree",
         "-nt", "2",
         "-s", alignment,
         "-te", tree_file,
-        "-m", "LG+C10+G",
+        "-m", f"LG+{model}+G",
         "-mwopt",
         "-prec", "10",
         "--prefix", prefix
@@ -161,8 +158,7 @@ def get_averages():
     return avg_weights, avg_alpha
 
 
-def write_nexus_file(weights):
-    model = "C10"
+def write_nexus_file(weights, model):
     out_freqs = []
     out_model = []
 
@@ -210,7 +206,7 @@ def write_nexus_file(weights):
         nex_file.write("end;")
 
 
-def run_iqtree_b(trees, avg_alpha):
+def run_iqtree_b(trees, avg_alpha, model):
     commands = []
 
     i = 1
@@ -223,10 +219,10 @@ def run_iqtree_b(trees, avg_alpha):
 
         iqtree_cmd = [
             "iqtree",
-            "-s", "data/Dandan/toy.phylip",
+            "-s", "data/Dandan/toy.aln",
             "--tree-fix", tree_file.name,
-            "-m", f"LG+fundi_C10+G{{{avg_alpha}}}",
-            "--mdef", "test.nex",
+            "-m", f"LG+fundi_{model}+G{{{avg_alpha}}}",
+            "--mdef", "test_nex.nex",
             "-T", "8",
             "-blfix",
             "--prefix", f"test_{i}",
@@ -244,12 +240,15 @@ def run_iqtree_b(trees, avg_alpha):
 def main(args):
 
     try:
-        master_tree = Tree(args.master_tree)
+        master_tree = Tree(args.tree)
 
         assert len(master_tree.get_children()) == 2, f"Master tree must be rooted!\n {master_tree}"
 
+        full_alignments = args.alignments
+        def_file = args.definition
+        model = args.mixture_model
         denominator = int(1 / args.increment)
-        a_tree, b_tree = get_ref_subtrees()
+        a_tree, b_tree = get_ref_subtrees(master_tree, def_file)
 
         for subtree in master_tree.get_children():
 
@@ -275,11 +274,11 @@ def main(args):
         with open("test_b.tree", "w") as b_tree_file:
             b_tree_file.write(new_b_tree.write())
 
-        write_alignment_partitions("data/Dandan/toy.aln", new_a_tree, new_b_tree)
+        write_alignment_partitions(full_alignments, new_a_tree, new_b_tree)
 
         # first iqtree execution
-        run_iqtree_a("test_a.tree", "test_a.aln", "test_subset1")
-        run_iqtree_a("test_b.tree", "test_b.aln", "test_subset2")
+        run_iqtree_a("test_a.tree", "test_a.aln", "test_subset1", model)
+        run_iqtree_a("test_b.tree", "test_b.aln", "test_subset2", model)
 
         trees = []
         proportions = [x / denominator for x in range(1, denominator)]
@@ -315,10 +314,10 @@ def main(args):
         avg_weights, avg_alpha = get_averages()
 
         # generate nexus file:
-        write_nexus_file(avg_weights)
+        write_nexus_file(avg_weights, model)
 
         # second iqtree execution
-        run_iqtree_b(trees, avg_alpha)
+        run_iqtree_b(trees, avg_alpha, model)
 
     except AssertionError as e:
         print(f"Oops! {e}")
@@ -334,17 +333,21 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Tree mapper")
 
-    parser.add_argument("-m", "--master_tree", required=True)
-    parser.add_argument("-a", "--a_tree", required=True)
-    parser.add_argument("-b", "--b_tree", required=True)
-    parser.add_argument("-i", "--increment", required=False, default=0.1)
+    parser.add_argument("-te", "--tree", required=True, help="Tree file in newick format, must be rooted")
+    parser.add_argument("-s", "--alignments", required=True, help="Alignments in fasta format")
+    parser.add_argument("-d", "--definition", required=True,
+                        help="Definition file that splits the tree by FunDi branch")
+    parser.add_argument("-m", "--mixture_model", required=False, default="C10",
+                        help="Mixture model to be used with iqtree")
+    parser.add_argument("-i", "--increment", required=False, default=0.1,
+                        help="Metric to control branch length variance, default is 0.1")
 
     # emulating commandline arguments for development
     sys.argv = [
         "Mapper.py",
-        "-m", "data/Dandan/rooted_toy.newick",
-        "-a", "data/Dandan/toy.subset1.newick",
-        "-b", "data/Dandan/toy.subset2.newick"
+        "-te", "data/Dandan/rooted_toy.newick",
+        "-d", "data/Dandan/toy.def",
+        "-s", "data/Dandan/toy.aln",
     ]
 
     arguments = parser.parse_args()
