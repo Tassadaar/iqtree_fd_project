@@ -28,6 +28,7 @@ def get_ref_subtrees(master_tree, def_address):
 def write_alignment_partitions(alignment_address, new_a_tree, new_b_tree):
     alignments = {}
 
+    # parsing fasta file
     with open(alignment_address, "r") as alignment_file:
         current_taxon = ""
         current_alignment = []
@@ -49,6 +50,7 @@ def write_alignment_partitions(alignment_address, new_a_tree, new_b_tree):
         if current_taxon and current_alignment:
             alignments[current_taxon] = "".join(current_alignment)
 
+    # write alignment for subtree a
     with open("test_a.aln", "w") as new_a_aln_file:
         a_leaves = new_a_tree.get_leaf_names()
 
@@ -58,6 +60,7 @@ def write_alignment_partitions(alignment_address, new_a_tree, new_b_tree):
                 new_a_aln_file.write(f">{taxon}\n")
                 new_a_aln_file.write(f"{alignment}\n")
 
+    # write alignment for subtree b
     with open("test_b.aln", "w") as new_b_aln_file:
         b_leaves = new_b_tree.get_leaf_names()
 
@@ -250,6 +253,10 @@ def main(args):
         denominator = int(1 / args.increment)
         a_tree, b_tree = get_ref_subtrees(master_tree, def_file)
 
+        # ------------------------------------section below is largely deprecated---------------------------------------
+        # check if a_tree and b_tree have the same topology
+        # subtrees used to be user input during development
+        # "Do you think this is worth keeping? I doubt it."
         for subtree in master_tree.get_children():
 
             if subtree.get_leaf_names() == a_tree.get_leaf_names():
@@ -267,6 +274,7 @@ def main(args):
             new_b_tree = fix_topology(b_tree, sub_b_tree)
         else:
             new_b_tree = b_tree
+        # --------------------------------------------------------------------------------------------------------------
 
         with open("test_a.tree", "w") as a_tree_file:
             a_tree_file.write(new_a_tree.write())
