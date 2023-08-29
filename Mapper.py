@@ -6,21 +6,25 @@ from ete3 import Tree, TreeNode
 
 
 def get_ref_subtrees(master_tree, def_address):
-    children = master_tree.get_children()
     leaf_groups = []
     a_tree = None
-    b_tree = None
 
     with open(def_address, "r") as def_file:
 
         for line in def_file:
-            leaf_groups.append(set(line.split()))
+            leaf_groups.append(line.split())
 
-    if set(children[0].get_leaf_names()) in leaf_groups:
-        a_tree = children[0]
+    # probe for non-root subtree
+    for leaf_group in leaf_groups:
+        tree = master_tree.get_common_ancestor(*leaf_group)
 
-    if set(children[1].get_leaf_names()) in leaf_groups:
-        b_tree = children[1]
+        if tree.is_root():
+            continue
+
+        a_tree = tree
+
+    master_tree.set_outgroup(a_tree)
+    b_tree = master_tree.get_children()[1]
 
     return a_tree, b_tree
 
