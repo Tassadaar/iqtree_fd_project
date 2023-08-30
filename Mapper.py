@@ -251,7 +251,7 @@ def main(args):
 
         assert len(master_tree.get_children()) == 2, f"Master tree must be rooted!\n {master_tree}"
 
-        full_alignments = args.alignments
+        full_alignment = args.alignment
         def_file = args.definition
         model = args.mixture_model
         denominator = int(1 / args.increment)
@@ -286,7 +286,7 @@ def main(args):
         with open("test_b.tree", "w") as b_tree_file:
             b_tree_file.write(new_b_tree.write())
 
-        write_alignment_partitions(full_alignments, new_a_tree, new_b_tree)
+        write_alignment_partitions(full_alignment, new_a_tree, new_b_tree)
 
         # first iqtree execution
         run_iqtree_a("test_a.tree", "test_a.aln", "test_subset1", model)
@@ -346,7 +346,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Tree mapper")
 
     parser.add_argument("-te", "--tree", required=True, help="Tree file in newick format, must be rooted")
-    parser.add_argument("-s", "--alignments", required=True, help="Alignments in fasta format")
+    parser.add_argument("-s", "--alignment", required=True, help="Alignment in fasta format")
     parser.add_argument("-d", "--definition", required=True,
                         help="Definition file that splits the tree by FunDi branch")
     parser.add_argument("-m", "--mixture_model", required=False, default="C10",
