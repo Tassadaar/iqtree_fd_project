@@ -248,6 +248,7 @@ def main(args):
 
     try:
         master_tree = Tree(args.tree)
+        master_tree.set_outgroup(master_tree.get_children()[0]) # the master tree needs to be rooted for ete3
 
         assert len(master_tree.get_children()) == 2, f"Master tree must be rooted!\n {master_tree}"
 
@@ -357,7 +358,7 @@ if __name__ == "__main__":
     # emulating commandline arguments for development
     sys.argv = [
         "Mapper.py",
-        "-te", "data/Dandan/rooted_toy.newick",
+        "-te", "data/Dandan/gstoy.newick",
         "-d", "data/Dandan/toy.def",
         "-s", "data/Dandan/toy.aln",
     ]
