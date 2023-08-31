@@ -8,22 +8,26 @@ from ete3 import Tree, TreeNode
 
 
 def get_ref_subtrees(master_tree, def_address):
-    children = master_tree.get_children()
     leaf_groups = []
     a_tree = None
-    b_tree = None
 
     # store definition file in memory
     # as a list of two sets of taxa
     with open(def_address, "r") as def_file:
         for line in def_file:
-            leaf_groups.append(set(line.split()))
+            leaf_groups.append(line.split())
 
-    if set(children[0].get_leaf_names()) in leaf_groups:
-        a_tree = children[0]
+    # probe for non-root subtree
+    for leaf_group in leaf_groups:
+        tree = master_tree.get_common_ancestor(*leaf_group)
 
-    if set(children[1].get_leaf_names()) in leaf_groups:
-        b_tree = children[1]
+        if tree.is_root():
+            continue
+
+        a_tree = tree
+
+    master_tree.set_outgroup(a_tree)
+    b_tree = master_tree.get_children()[1]
 
     return a_tree, b_tree
 
@@ -264,13 +268,14 @@ def main(args):
     # the recommended way of doing things
     try:
         master_tree = Tree(args.tree)
+        master_tree.set_outgroup(master_tree.get_children()[0]) # the master tree needs to be rooted for ete3
 
         # should it be rooted though?
         assert len(master_tree.get_children()) == 2, f"Master tree must be rooted!\n {master_tree}"
 
         # just use args.xxxx straight up,
         # rather than creating new memory variables
-        full_alignments = args.alignments # you only provide a single alignment, so rename it to not be plural
+        full_alignment = args.alignment
         def_file = args.definition
         model = args.mixture_model
 
@@ -308,7 +313,7 @@ def main(args):
         with open("test_b.tree", "w") as b_tree_file:
             b_tree_file.write(new_b_tree.write())
 
-        write_alignment_partitions(full_alignments, new_a_tree, new_b_tree)
+        write_alignment_partitions(full_alignment, new_a_tree, new_b_tree)
 
         # first iqtree execution
         run_iqtree_a("test_a.tree", "test_a.aln", "test_subset1", model)
@@ -373,12 +378,8 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Tree mapper")
 
-    parser.add_argument("-te", "--tree", required=True, 
-                        help="Tree file in newick format, must be rooted")
-
-    parser.add_argument("-s", "--alignments", required=True, 
-                        help="Alignments in fasta format")
-
+    parser.add_argument("-te", "--tree", required=True, help="Tree file in newick format, must be rooted")
+    parser.add_argument("-s", "--alignment", required=True, help="Alignment in fasta format")
     parser.add_argument("-d", "--definition", required=True,
                         help="Definition file that splits the tree by FunDi branch")
 
