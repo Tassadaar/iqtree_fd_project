@@ -3,7 +3,7 @@
 import sys
 import argparse
 import subprocess
-from itertools import product
+import itertools
 from ete3 import Tree, TreeNode
 
 
@@ -13,8 +13,9 @@ def get_ref_subtrees(master_tree, def_address):
     a_tree = None
     b_tree = None
 
+    # store definition file in memory
+    # as a list of two sets of taxa
     with open(def_address, "r") as def_file:
-
         for line in def_file:
             leaf_groups.append(set(line.split()))
 
@@ -27,6 +28,8 @@ def get_ref_subtrees(master_tree, def_address):
     return a_tree, b_tree
 
 
+# why not simply use BioPython for loading,
+# splitting, and writing the alignment files?
 def write_alignment_partitions(alignment_address, new_a_tree, new_b_tree):
     alignments = {}
 
@@ -75,11 +78,16 @@ def write_alignment_partitions(alignment_address, new_a_tree, new_b_tree):
 
 def fix_topology(input_tree, reference_tree):
     tree_copy = input_tree.copy("deepcopy")
-    copied_leaves = [child.get_leaf_names() for child in tree_copy.get_children()]
-    reference_leaves = [child.get_leaf_names() for child in reference_tree.get_children()]
+
+    # lists of two items, each item a list of taxa
+    copied_leaves    = [ child.get_leaf_names() for child in tree_copy.get_children() ]
+    reference_leaves = [ child.get_leaf_names() for child in reference_tree.get_children() ]
 
     for leaf_group in copied_leaves:
 
+        # check if group of leafs is found as
+        # in-group or out-group in reference tree
+        ## does list occurr in list of lists?
         if leaf_group not in reference_leaves:
             continue
 
@@ -89,19 +97,25 @@ def fix_topology(input_tree, reference_tree):
             return tree_copy
 
         # scenario 2: leaf group is valid but multiple taxa
+        # ?? get_common_ancestor() requires multiple arguments ??
         outgroup = tree_copy.get_common_ancestor(*leaf_group)
         tree_copy.set_outgroup(outgroup)
         return tree_copy
 
-    # scenario 3: none of the leaf groups of root is valid
+    # scenario 3: none of the leaf groups of match the reference tree
+    # hence we need to recursively climb the subtree until
+    # a leaf group is found that matches an in- or out-group
+    # of the reference tree
     def find_outgroup(node):
         parent = node.up
-
+        # stop condition: we found a node that matches
+        # an in-group or out-group found in reference tree
         if parent.get_leaf_names() in reference_leaves:
             return parent
         else:
             return find_outgroup(parent)
 
+    # make this a two liner to increase readability
     tree_copy.set_outgroup(find_outgroup(tree_copy.get_farthest_leaf()[0]))
     return tree_copy
 
@@ -116,7 +130,7 @@ def run_iqtree_a(tree_file, alignment, prefix, model):
         "-m", f"LG+{model}+G",
         "-mwopt",
         "-prec", "10",
-        "--prefix", prefix
+        "--prefix", prefix # --prefix does not work with my version of iqtree. Use -pre instead?
     ]
 
     subprocess.run(iqtree_command)
@@ -219,6 +233,8 @@ def run_iqtree_b(trees, avg_alpha, model):
 
         tree.render(f"test_{i}.png")
 
+        # write tree with
+        # t.write(format=1, outfile="new_tree.nw")
         with open(f"test_{i}.tree", "w") as tree_file:
             tree_file.write(tree.write())
 
@@ -230,7 +246,7 @@ def run_iqtree_b(trees, avg_alpha, model):
             "--mdef", "test_nex.nex",
             "-T", "8",
             "-blfix",
-            "--prefix", f"test_{i}",
+            "--prefix", f"test_{i}",# --prefix does not work with my version of iqtree. Use -pre instead?
             "-prec", "10",
         ]
 
@@ -244,15 +260,21 @@ def run_iqtree_b(trees, avg_alpha, model):
 
 def main(args):
 
+    # check if this kind of try / except block is
+    # the recommended way of doing things
     try:
         master_tree = Tree(args.tree)
 
+        # should it be rooted though?
         assert len(master_tree.get_children()) == 2, f"Master tree must be rooted!\n {master_tree}"
 
-        full_alignments = args.alignments
+        # just use args.xxxx straight up,
+        # rather than creating new memory variables
+        full_alignments = args.alignments # you only provide a single alignment, so rename it to not be plural
         def_file = args.definition
         model = args.mixture_model
-        denominator = int(1 / args.increment)
+
+        # split master tree into two TreeNode objects
         a_tree, b_tree = get_ref_subtrees(master_tree, def_file)
 
         # ------------------------------------section below is largely deprecated---------------------------------------
@@ -278,6 +300,8 @@ def main(args):
             new_b_tree = b_tree
         # --------------------------------------------------------------------------------------------------------------
 
+        # write a newick file in a single line of code with
+        # t.write(format=1, outfile="new_tree.nw")
         with open("test_a.tree", "w") as a_tree_file:
             a_tree_file.write(new_a_tree.write())
 
@@ -291,14 +315,18 @@ def main(args):
         run_iqtree_a("test_b.tree", "test_b.aln", "test_subset2", model)
 
         trees = []
-        proportions = [x / denominator for x in range(1, denominator)]
+
+        # make a list of increments
+        # [0.1, 0.2, 0.3, etc, ...]
+        denominator = int(1 / args.increment)
+        proportions = [ x / denominator for x in range(1, denominator) ]
         a_branch = new_a_tree.get_children()[0].dist + new_a_tree.get_children()[1].dist
         b_branch = new_b_tree.get_children()[0].dist + new_b_tree.get_children()[1].dist
 
         print(f"branch a: {a_branch}, branch b: {b_branch}\n")
 
         # get alpha and beta from a cartesian product of proportions
-        for alpha, beta in product(proportions, repeat=2):
+        for alpha, beta in itertools.product(proportions, repeat=2):
 
             # set new branch lengths for a
             new_a_tree.get_children()[0].dist = a_branch * alpha
@@ -340,25 +368,33 @@ def main(args):
         sys.exit()
 
 
+# put parser on top, but main function down here
+# let main function go
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Tree mapper")
 
-    parser.add_argument("-te", "--tree", required=True, help="Tree file in newick format, must be rooted")
-    parser.add_argument("-s", "--alignments", required=True, help="Alignments in fasta format")
+    parser.add_argument("-te", "--tree", required=True, 
+                        help="Tree file in newick format, must be rooted")
+
+    parser.add_argument("-s", "--alignments", required=True, 
+                        help="Alignments in fasta format")
+
     parser.add_argument("-d", "--definition", required=True,
                         help="Definition file that splits the tree by FunDi branch")
+
     parser.add_argument("-m", "--mixture_model", required=False, default="C10",
                         help="Mixture model to be used with iqtree")
+
     parser.add_argument("-i", "--increment", required=False, default=0.1,
                         help="Metric to control branch length variance, default is 0.1")
 
-    # emulating commandline arguments for development
-    sys.argv = [
-        "Mapper.py",
-        "-te", "data/Dandan/rooted_toy.newick",
-        "-d", "data/Dandan/toy.def",
-        "-s", "data/Dandan/toy.aln",
-    ]
+    # # emulating commandline arguments for development
+    # sys.argv = [
+    #     "Mapper.py",
+    #     "-te", "data/Dandan/rooted_toy.newick",
+    #     "-d", "data/Dandan/toy.def",
+    #     "-s", "data/Dandan/toy.aln",
+    # ]
 
     arguments = parser.parse_args()
     main(arguments)
