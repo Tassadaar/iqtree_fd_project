@@ -135,12 +135,14 @@ def fix_topology(input_tree, reference_tree):
 
 def run_iqtree_a(tree_file, alignment, prefix, model):
 
+    # meeting note: have consistent iqtree arguments
+    # aim for iqtree 2 style arguments??
     iqtree_command = [
         "iqtree",
-        "-nt", "2",
+        "-nt", "2", # meeting note: set number of cpus as command line argument
         "-s", alignment,
         "-te", tree_file,
-        "-m", f"LG+{model}+G",
+        "-m", f"LG+{model}+G", # meeting note: make number of G categories user defined on command line, also {model} should include 'LG+' (aka, user defined input)
         "-mwopt",
         "-prec", "10",
         "--prefix", prefix # --prefix does not work with my version of iqtree. Use -pre instead?
@@ -182,6 +184,7 @@ def get_averages():
     a_weights, a_alpha = get_info("test_subset1.iqtree")
     b_weights, b_alpha = get_info("test_subset2.iqtree")
 
+    # meeting note: means should be the weighted means, weighted by number of taxa
     avg_weights = {category : (a_weight + b_weights[category]) / 2 for category, a_weight in a_weights.items()}
     avg_alpha = (a_alpha + b_alpha) / 2
 
@@ -217,7 +220,9 @@ def write_nexus_file(weights, model):
 
     # generate model section
     # why define these as lists? why not define them as strings?
+    # meeting note: poisson+G+ can be removed
     weight_line = [ f"model fundi_{model} = POISSON+G+FMIX{{"    ]
+    # meeting note: model_line is not necessary!
     model_line  = [ f"model fundi_{model}Opt = POISSON+G+FMIX{{" ]
 
     # we take the previously calculated model weights from memory
@@ -278,13 +283,14 @@ def run_iqtree_b(trees, avg_alpha, model):
             tree_file.write(tree.write())
 
         # this iqtree command should invoke fundi
-        iqtree_cmd = [
+        # meeting note: at least iqtree2 v2.2 is necessary
+        iqtree_cmd = 
             "iqtree",
-            "-s", "data/Dandan/toy.aln",
+            "-s", "data/Dandan/toy.aln", # meeting note: provide alignment as argument on command line
             "--tree-fix", tree_file.name,
             "-m", f"LG+fundi_{model}+G{{{avg_alpha}}}",
             "--mdef", "test_nex.nex",
-            "-T", "8",
+            "-T", "8", # meeting note: set number of cpus as argument on command line
             "-blfix",
             "--prefix", f"test_{i}",# --prefix does not work with my version of iqtree. Use -pre instead?
             "-prec", "10",
@@ -385,6 +391,9 @@ def main(args):
         # second iqtree execution
         run_iqtree_b(trees, avg_alpha, model)
 
+        # meeting note: generate a little summary report, 
+        # select the tree with the highest likelihood
+
     except AssertionError as e:
         print(f"Oops! {e}")
 
@@ -407,6 +416,9 @@ if __name__ == "__main__":
     parser.add_argument("-s", "--alignment", required=True, 
                         help="Alignment in fasta format")
 
+    # meeting note: add validation function for definition file
+    # does the taxa split in def correspond to a bipartition in the master tree?
+    # if not kill execution and tell user to fix its definition file
     parser.add_argument("-d", "--definition", required=True,
                         help="Definition file that splits the tree by FunDi branch")
 
