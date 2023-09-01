@@ -12,19 +12,28 @@ def get_ref_subtrees(master_tree, def_address):
     a_tree = None
 
     # store definition file in memory
-    # as a list of two sets of taxa
+    # as a list of two lists of taxa
     with open(def_address, "r") as def_file:
+        # this possible as a list comprehension?
+        # suggestion:
+        # leaf_groups = [ line.split() for line in def_file ]
         for line in def_file:
             leaf_groups.append(line.split())
 
     # probe for non-root subtree
     for leaf_group in leaf_groups:
-        tree = master_tree.get_common_ancestor(*leaf_group)
+        common_ancestor = master_tree.get_common_ancestor(*leaf_group)
 
-        if tree.is_root():
+        # how about
+        # if not common_ancestor.is_root():
+        #    master_tree.set_outgroup(common_ancestor)
+        #    a_tree, b_tree = master_tree.get_children()
+        #
+        # return a_tree, b_tree
+        if common_ancestor.is_root():
             continue
 
-        a_tree = tree
+        a_tree = common_ancestor
 
     master_tree.set_outgroup(a_tree)
     b_tree = master_tree.get_children()[1]
@@ -84,7 +93,7 @@ def fix_topology(input_tree, reference_tree):
     tree_copy = input_tree.copy("deepcopy")
 
     # lists of two items, each item a list of taxa
-    copied_leaves    = [ child.get_leaf_names() for child in tree_copy.get_children() ]
+    copied_leaves    = [ child.get_leaf_names() for child in tree_copy.get_children()      ]
     reference_leaves = [ child.get_leaf_names() for child in reference_tree.get_children() ]
 
     for leaf_group in copied_leaves:
@@ -95,18 +104,18 @@ def fix_topology(input_tree, reference_tree):
         if leaf_group not in reference_leaves:
             continue
 
-        # scenario 1: leaf group is valid but only one taxon
+        # scenario 1: leaf group is in ref tree but is only one taxon
         if len(leaf_group) == 1:
             tree_copy.set_outgroup(leaf_group[0])
             return tree_copy
 
-        # scenario 2: leaf group is valid but multiple taxa
+        # scenario 2: leaf group is in ref tree but is multiple taxa
         # ?? get_common_ancestor() requires multiple arguments ??
         outgroup = tree_copy.get_common_ancestor(*leaf_group)
         tree_copy.set_outgroup(outgroup)
         return tree_copy
 
-    # scenario 3: none of the leaf groups of match the reference tree
+    # scenario 3: none of the leaf groups match the reference tree
     # hence we need to recursively climb the subtree until
     # a leaf group is found that matches an in- or out-group
     # of the reference tree
@@ -157,8 +166,9 @@ def get_info(in_file):
                 section_found = False
 
             if section_found:
-                words = line.split()
-                weights[words[0]] = float(words[3])
+                # a little bit more readable
+                category, _, _, weight, _  = line.split()
+                weights[category] = float(weight)
 
             if "Gamma shape alpha:" in line:
                 words = line.split()
@@ -169,13 +179,10 @@ def get_info(in_file):
 
 
 def get_averages():
-    a_log = "test_subset1.iqtree"
-    b_log = "test_subset2.iqtree"
+    a_weights, a_alpha = get_info("test_subset1.iqtree")
+    b_weights, b_alpha = get_info("test_subset2.iqtree")
 
-    a_weights, a_alpha = get_info(a_log)
-    b_weights, b_alpha = get_info(b_log)
-
-    avg_weights = {key: (a_weight + b_weights[key]) / 2 for key, a_weight in a_weights.items()}
+    avg_weights = {category : (a_weight + b_weights[category]) / 2 for category, a_weight in a_weights.items()}
     avg_alpha = (a_alpha + b_alpha) / 2
 
     return avg_weights, avg_alpha
@@ -186,6 +193,7 @@ def write_nexus_file(weights, model):
     out_model = []
 
     # generate frequency section
+    # we take the model frequencies from a iqtree data file
     with open("data/modelmixtureCAT.nex", "r") as models:
         section_found = False
 
@@ -202,13 +210,38 @@ def write_nexus_file(weights, model):
                     break
 
                 words = line.split()
+                # rename model to fundi_<model>
                 words[1] = f"fundi_{words[1]}"
+                # store model frequencies in memory
                 out_freqs.append(words)
 
     # generate model section
-    weight_line = [f"model fundi_{model} = POISSON+G+FMIX{{"]
-    model_line = [f"model fundi_{model}Opt = POISSON+G+FMIX{{"]
+    # why define these as lists? why not define them as strings?
+    weight_line = [ f"model fundi_{model} = POISSON+G+FMIX{{"    ]
+    model_line  = [ f"model fundi_{model}Opt = POISSON+G+FMIX{{" ]
 
+    # we take the previously calculated model weights from memory
+    ## this code is a little messy
+    ## how about
+    # 
+    # last_category = list( weights.keys() )[-1]
+    # for category, weight in weights.items():
+    #    if category != last_category:
+    #        weight_line.append(f"fundi_{model}pi{category}:1:{weight}" + ",")
+    #        model_line.append( f"fundi_{model}pi{cateogry}" + ",")
+    #    else:
+    #        weight_line.append(f"fundi_{model}pi{category}:1:{weight}" + "};")
+    #        model_line.append( f"fundi_{model}pi{cateogry}" + "};")
+    #
+    # or if you want to have weight_line be a string
+    # last_category = list( weights.keys() )[-1]
+    # for category, weight in weights.items():
+    #    if category != last_category:
+    #        weight_line += f"fundi_{model}pi{category}:1:{weight}" + ","
+    #        model_line  += f"fundi_{model}pi{cateogry}" + ","
+    #    else:
+    #        weight_line += f"fundi_{model}pi{category}:1:{weight}" + "};"
+    #        model_line  += f"fundi_{model}pi{cateogry}" + "};"
     for index, weight in weights.items():
         weight_line.append(f"fundi_{model}pi{index}:1:{weight}" + ("," if index != list(weights.keys())[-1] else "};"))
         model_line.append(f"fundi_{model}pi{index}" + ("," if index != list(weights.keys())[-1] else "};"))
@@ -224,6 +257,8 @@ def write_nexus_file(weights, model):
             nex_file.write(" ".join(line) + "\n")
 
         for line in out_model:
+            # if out_model is a list of strings, instead of lists of lists
+            # nex_file.write(line + \n")
             nex_file.write("".join(line) + "\n")
 
         nex_file.write("end;")
@@ -242,6 +277,7 @@ def run_iqtree_b(trees, avg_alpha, model):
         with open(f"test_{i}.tree", "w") as tree_file:
             tree_file.write(tree.write())
 
+        # this iqtree command should invoke fundi
         iqtree_cmd = [
             "iqtree",
             "-s", "data/Dandan/toy.aln",
@@ -282,54 +318,41 @@ def main(args):
         # split master tree into two TreeNode objects
         a_tree, b_tree = get_ref_subtrees(master_tree, def_file)
 
-        # ------------------------------------section below is largely deprecated---------------------------------------
-        # check if a_tree and b_tree have the same topology
-        # subtrees used to be user input during development
-        # "Do you think this is worth keeping? I doubt it."
-        for subtree in master_tree.get_children():
-
-            if subtree.get_leaf_names() == a_tree.get_leaf_names():
-                sub_a_tree = subtree
-
-            if subtree.get_leaf_names() == b_tree.get_leaf_names():
-                sub_b_tree = subtree
-
-        if a_tree.robinson_foulds(sub_a_tree)[0] != 0:
-            new_a_tree = fix_topology(a_tree, sub_a_tree)
-        else:
-            new_a_tree = a_tree
-
-        if b_tree.robinson_foulds(sub_b_tree)[0] != 0:
-            new_b_tree = fix_topology(b_tree, sub_b_tree)
-        else:
-            new_b_tree = b_tree
-        # --------------------------------------------------------------------------------------------------------------
-
         # write a newick file in a single line of code with
-        # t.write(format=1, outfile="new_tree.nw")
+        # e.g., t.write(format=1, outfile="new_tree.nw")
         with open("test_a.tree", "w") as a_tree_file:
             a_tree_file.write(new_a_tree.write())
 
         with open("test_b.tree", "w") as b_tree_file:
             b_tree_file.write(new_b_tree.write())
 
+        # generates 'test_a.aln' and 'test_b.aln'
         write_alignment_partitions(full_alignment, new_a_tree, new_b_tree)
 
         # first iqtree execution
+        # perhaps make named arguments for this function?
+        # just to increase code clarity
+        # e.g. run_iqtree_a(fixed_tree='test_a.tree', alignment='test_a.aln', prefix='test_subset1', model=args.mixture_model)
         run_iqtree_a("test_a.tree", "test_a.aln", "test_subset1", model)
         run_iqtree_a("test_b.tree", "test_b.aln", "test_subset2", model)
 
-        trees = []
+        # do we want to use the fix_topology() function here??
+        # the iqtree output trees are unrooted, so before we
+        # stitch them together we have to make sure they are
+        # properly rooted
+
+        # meeting note: take branch lengths from iqtree outputs!!
+        a_branch_length = new_a_tree.get_children()[0].dist + new_a_tree.get_children()[1].dist
+        b_branch_length = new_b_tree.get_children()[0].dist + new_b_tree.get_children()[1].dist
+
+        print(f"branch a: {a_branch_length}, branch b: {b_branch_length}\n")
 
         # make a list of increments
         # [0.1, 0.2, 0.3, etc, ...]
         denominator = int(1 / args.increment)
         proportions = [ x / denominator for x in range(1, denominator) ]
-        a_branch = new_a_tree.get_children()[0].dist + new_a_tree.get_children()[1].dist
-        b_branch = new_b_tree.get_children()[0].dist + new_b_tree.get_children()[1].dist
 
-        print(f"branch a: {a_branch}, branch b: {b_branch}\n")
-
+        trees = []
         # get alpha and beta from a cartesian product of proportions
         for alpha, beta in itertools.product(proportions, repeat=2):
 
@@ -341,7 +364,7 @@ def main(args):
             new_b_tree.get_children()[0].dist = b_branch * beta
             new_b_tree.get_children()[1].dist = b_branch * (1 - beta)
 
-            # reconstruct master tree
+            # stitch subtrees back together into master tree
             new_master_tree = TreeNode(dist=0.1)
             new_master_tree.add_child(new_a_tree.copy("deepcopy"))
             new_master_tree.add_child(new_b_tree.copy("deepcopy"))
@@ -378,8 +401,12 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Tree mapper")
 
-    parser.add_argument("-te", "--tree", required=True, help="Tree file in newick format, must be rooted")
-    parser.add_argument("-s", "--alignment", required=True, help="Alignment in fasta format")
+    parser.add_argument("-te", "--tree", required=True, 
+                        help="Tree file in newick format, must be rooted")
+
+    parser.add_argument("-s", "--alignment", required=True, 
+                        help="Alignment in fasta format")
+
     parser.add_argument("-d", "--definition", required=True,
                         help="Definition file that splits the tree by FunDi branch")
 
