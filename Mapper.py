@@ -358,7 +358,7 @@ if __name__ == "__main__":
     # emulating commandline arguments for development
     sys.argv = [
         "Mapper.py",
-        "-te", "data/Dandan/gstoy.newick",
+        "-te", "data/Dandan/toy.newick",
         "-d", "data/Dandan/toy.def",
         "-s", "data/Dandan/toy.aln",
     ]

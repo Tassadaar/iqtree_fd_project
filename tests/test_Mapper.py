@@ -1,5 +1,5 @@
 from unittest import TestCase
-from Mapper import fix_topology, get_info, get_averages, write_nexus_file
+from Mapper import get_ref_subtrees, get_info, fix_topology, get_averages, write_nexus_file
 from ete3 import Tree
 
 
@@ -10,6 +10,16 @@ class Test(TestCase):
     sub_a_tree = master_tree.get_children()[0]
     sub_b_tree = master_tree.get_children()[1]
     iqtree_file = "../data/Dandan/toy.subset1.aln.iqtree"
+    def_address = "../data/Dandan/toy.def"
+    master_tree_d = Tree("../data/Dandan/toy.newick")
+    a_tree_d = Tree("../data/Dandan/toy.subset1.newick")
+    b_tree_d = Tree("../data/Dandan/toy.subset2.newick")
+
+    def test_get_ref_subtrees_bad_children(self):
+        new_a_tree, new_b_tree = get_ref_subtrees(self.master_tree_d, self.def_address)
+
+        self.assertEqual(0, new_a_tree.robinson_foulds(self.a_tree_d)[0], "A tree is wrong!")
+        self.assertEqual(0, new_b_tree.robinson_foulds(self.b_tree_d)[0], "B tree is wrong!")
 
     def test_fix_topology_unrooted_scenario_1(self):
         new_tree = fix_topology(self.a_tree, self.sub_a_tree)
