@@ -6,25 +6,23 @@ from ete3 import Tree, TreeNode
 
 
 def get_ref_subtrees(master_tree, def_address):
-    leaf_groups = []
+    # this is good practice, but it currently breaks the code
+    # master_tree_copy = master_tree.copy("deepcopy")
     a_tree = None
+    b_tree = None
 
+    # store definition file in memory
+    # as a list of two lists of taxa
     with open(def_address, "r") as def_file:
-
-        for line in def_file:
-            leaf_groups.append(line.split())
+        leaf_groups = [line.split() for line in def_file]
 
     # probe for non-root subtree
     for leaf_group in leaf_groups:
-        tree = master_tree.get_common_ancestor(*leaf_group)
+        common_ancestor = master_tree.get_common_ancestor(*leaf_group)
 
-        if tree.is_root():
-            continue
-
-        a_tree = tree
-
-    master_tree.set_outgroup(a_tree)
-    b_tree = master_tree.get_children()[1]
+        if not common_ancestor.is_root():
+            master_tree.set_outgroup(common_ancestor)
+            a_tree, b_tree = master_tree.get_children()
 
     return a_tree, b_tree
 
