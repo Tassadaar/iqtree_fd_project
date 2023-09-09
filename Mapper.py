@@ -3,6 +3,7 @@ import argparse
 import subprocess
 from itertools import product
 from ete3 import Tree, TreeNode
+from Bio import AlignIO
 
 
 def get_ref_subtrees(master_tree, def_address):
@@ -27,50 +28,29 @@ def get_ref_subtrees(master_tree, def_address):
     return a_tree, b_tree
 
 
-def write_alignment_partitions(alignment_address, new_a_tree, new_b_tree):
-    alignments = {}
-
+def write_alignment_partitions(alignment_address, a_tree, b_tree):
     # parsing fasta file
-    with open(alignment_address, "r") as alignment_file:
-        current_taxon = ""
-        current_alignment = []
-
-        for line in alignment_file:
-
-            if line.startswith(">"):
-
-                if current_taxon and current_alignment:
-                    current_alignment[-1] = current_alignment[-1].strip()
-                    alignments[current_taxon] = "".join(current_alignment)
-                    current_alignment = []
-
-                current_taxon = line[1:-1]
-                continue
-
-            current_alignment.append(line)
-
-        if current_taxon and current_alignment:
-            alignments[current_taxon] = "".join(current_alignment)
+    alignment = AlignIO.read(alignment_address, "fasta")
+    a_leaves = a_tree.get_leaf_names()
+    b_leaves = b_tree.get_leaf_names()
 
     # write alignment for subtree a
-    with open("test_a.aln", "w") as new_a_aln_file:
-        a_leaves = new_a_tree.get_leaf_names()
+    with open("test_a.aln", "w") as a_aln_file:
+        
+        for record in alignment:
 
-        for taxon, alignment in alignments.items():
-
-            if taxon in a_leaves:
-                new_a_aln_file.write(f">{taxon}\n")
-                new_a_aln_file.write(f"{alignment}\n")
+            if record.id in a_leaves:
+                a_aln_file.write(f">{record.id}\n")
+                a_aln_file.write(f"{record.seq}\n")
 
     # write alignment for subtree b
-    with open("test_b.aln", "w") as new_b_aln_file:
-        b_leaves = new_b_tree.get_leaf_names()
+    with open("test_b.aln", "w") as b_aln_file:
 
-        for taxon, alignment in alignments.items():
+        for record in alignment:
 
-            if taxon in b_leaves:
-                new_b_aln_file.write(f">{taxon}\n")
-                new_b_aln_file.write(f"{alignment}\n")
+            if record.id in b_leaves:
+                b_aln_file.write(f">{record.id}\n")
+                b_aln_file.write(f"{record.seq}\n")
 
 
 def fix_topology(input_tree, reference_tree):
