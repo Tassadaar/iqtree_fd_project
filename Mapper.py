@@ -6,6 +6,19 @@ from ete3 import Tree, TreeNode
 from Bio import AlignIO
 
 
+def validate_alignment(tree, alignment_address):
+    # parsing fasta file
+    alignment = AlignIO.read(alignment_address, "fasta")
+    seq_ids = set(record.id for record in alignment)
+
+    for taxon in tree.get_leaf_names():
+
+        if taxon not in seq_ids:
+            raise ValueError(f"Taxon {taxon} does not have alignment information.")
+
+    return alignment
+
+
 def get_ref_subtrees(master_tree, def_address):
     # this is good practice, but it currently breaks the code
     # master_tree_copy = master_tree.copy("deepcopy")
@@ -28,9 +41,7 @@ def get_ref_subtrees(master_tree, def_address):
     return a_tree, b_tree
 
 
-def write_alignment_partitions(alignment_address, a_tree, b_tree):
-    # parsing fasta file
-    alignment = AlignIO.read(alignment_address, "fasta")
+def write_alignment_partitions(alignment, a_tree, b_tree):
     a_leaves = a_tree.get_leaf_names()
     b_leaves = b_tree.get_leaf_names()
 
@@ -226,11 +237,11 @@ def main(args):
 
     try:
         master_tree = Tree(args.tree)
-        master_tree.set_outgroup(master_tree.get_children()[0]) # the master tree needs to be rooted for ete3
+        master_tree.set_outgroup(master_tree.get_children()[0])  # the master tree needs to be rooted for ete3
 
         assert len(master_tree.get_children()) == 2, f"Master tree must be rooted!\n {master_tree}"
 
-        full_alignment = args.alignment
+        alignment = validate_alignment(master_tree, args.alignment)
         def_file = args.definition
         model = args.mixture_model
         denominator = int(1 / args.increment)
@@ -265,7 +276,7 @@ def main(args):
         with open("test_b.tree", "w") as b_tree_file:
             b_tree_file.write(new_b_tree.write())
 
-        write_alignment_partitions(full_alignment, new_a_tree, new_b_tree)
+        write_alignment_partitions(alignment, new_a_tree, new_b_tree)
 
         # first iqtree execution
         run_iqtree_a("test_a.tree", "test_a.aln", "test_subset1", model)
@@ -315,6 +326,9 @@ def main(args):
 
     except NameError as e:
         print(f"Panda-monium! {e}")
+
+    except ValueError as e:
+        print(f"Fatal: {e} Check if inputs are valid!")
 
     finally:
         print("\nSystem exiting...")
