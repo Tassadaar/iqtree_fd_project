@@ -19,16 +19,40 @@ def validate_alignment(tree, alignment_address):
     return alignment
 
 
-def get_ref_subtrees(master_tree, def_address):
-    # this is good practice, but it currently breaks the code
-    # master_tree_copy = master_tree.copy("deepcopy")
-    a_tree = None
-    b_tree = None
-
+def validate_def_file(tree, def_address):
     # store definition file in memory
     # as a list of two lists of taxa
     with open(def_address, "r") as def_file:
         leaf_groups = [line.split() for line in def_file]
+
+    if len(leaf_groups) != 2:
+        raise ValueError(f"Definition file is not in the right format.")
+
+    leaves = leaf_groups[0] + leaf_groups[1]
+    remainder_leaves = leaves.copy()
+
+    for taxon in tree.get_leaf_names():
+
+        if taxon not in leaves:
+            raise ValueError(f"Taxon {taxon} is undefined in the definition file")
+
+        remainder_leaves.remove(taxon)
+
+    if remainder_leaves:
+
+        if len(remainder_leaves) == 1:
+            raise ValueError(f"Taxon {{{remainder_leaves.pop()}}} in the definition file do not exist in the tree.")
+        else:
+            raise ValueError(f"Taxa {{{', '.join(remainder_leaves)}}} in the definition file do not exist in the tree.")
+
+    return leaf_groups
+
+
+def get_ref_subtrees(master_tree, leaf_groups):
+    # this is good practice, but it currently breaks the code
+    # master_tree_copy = master_tree.copy("deepcopy")
+    a_tree = None
+    b_tree = None
 
     # probe for non-root subtree
     for leaf_group in leaf_groups:
@@ -242,10 +266,10 @@ def main(args):
         assert len(master_tree.get_children()) == 2, f"Master tree must be rooted!\n {master_tree}"
 
         alignment = validate_alignment(master_tree, args.alignment)
-        def_file = args.definition
+        defined_groups = validate_def_file(master_tree, args.definition)
         model = args.mixture_model
         denominator = int(1 / args.increment)
-        a_tree, b_tree = get_ref_subtrees(master_tree, def_file)
+        a_tree, b_tree = get_ref_subtrees(master_tree, defined_groups)
 
         # ------------------------------------section below is largely deprecated---------------------------------------
         # check if a_tree and b_tree have the same topology
