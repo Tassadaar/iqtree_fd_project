@@ -257,6 +257,48 @@ def run_iqtree_b(trees, avg_alpha, model):
         subprocess.run(command)
 
 
+def generate_summary(tree_count):
+    likelihoods = {}
+
+    i = 1
+    while i <= tree_count:
+
+        with open(f"test_{i}.iqtree", "r") as iqtree_file:
+
+            for line in iqtree_file:
+
+                if "Log-likelihood of the tree:" not in line:
+                    continue
+
+                words = line.split()
+                likelihoods[i] = float(words[4])
+                continue
+
+        i += 1
+
+    with open("test_summary.txt", "w") as summary_file:
+
+        best_tree = max(likelihoods, key=likelihoods.get)
+        summary_file.write(f"Tree {best_tree} has the largest log-likelihood of {likelihoods[best_tree]}.\n\n")
+
+        with open(f"test_{best_tree}.iqtree", "r") as tree_file:
+            section_found = False
+
+            for line in tree_file:
+
+                if "NOTE: Tree is UNROOTED" in line:
+                    section_found = True
+
+                if "Tree in newick format:" in line:
+                    break
+
+                if section_found is True:
+                    summary_file.write(line)
+
+        for tree, likelihood in likelihoods.items():
+            summary_file.write(f"Log-likelihood of the tree {tree}: {likelihood}\n")
+
+
 def main(args):
 
     try:
@@ -344,6 +386,9 @@ def main(args):
 
         # second iqtree execution
         run_iqtree_b(trees, avg_alpha, model)
+
+        # To get the number of trees generated, we take number of proportions to the power of 2
+        generate_summary(len(proportions) ** 2)
 
     except AssertionError as e:
         print(f"Oops! {e}")
