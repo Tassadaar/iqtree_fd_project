@@ -180,7 +180,6 @@ def get_averages():
 
 def write_nexus_file(weights, model):
     out_freqs = []
-    out_model = []
 
     # generate frequency section
     with open("data/modelmixtureCAT.nex", "r") as models:
@@ -204,14 +203,9 @@ def write_nexus_file(weights, model):
 
     # generate model section
     weight_line = [f"model fundi_{model} = POISSON+G+FMIX{{"]
-    model_line = [f"model fundi_{model}Opt = POISSON+G+FMIX{{"]
 
     for index, weight in weights.items():
         weight_line.append(f"fundi_{model}pi{index}:1:{weight}" + ("," if index != list(weights.keys())[-1] else "};"))
-        model_line.append(f"fundi_{model}pi{index}" + ("," if index != list(weights.keys())[-1] else "};"))
-
-    out_model.append(weight_line)
-    out_model.append(model_line)
 
     # write to file
     with open("test_nex.nex", "w") as nex_file:
@@ -220,8 +214,7 @@ def write_nexus_file(weights, model):
         for line in out_freqs:
             nex_file.write(" ".join(line) + "\n")
 
-        for line in out_model:
-            nex_file.write("".join(line) + "\n")
+        nex_file.write("".join(weight_line) + "\n")
 
         nex_file.write("end;")
 
