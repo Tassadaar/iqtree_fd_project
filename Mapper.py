@@ -179,6 +179,7 @@ def get_averages():
 
 
 def write_nexus_file(weights, model):
+    file_name = "test_nex.nex"
     out_freqs = []
 
     # generate frequency section
@@ -208,7 +209,7 @@ def write_nexus_file(weights, model):
         weight_line.append(f"fundi_{model}pi{index}:1:{weight}" + ("," if index != list(weights.keys())[-1] else "};"))
 
     # write to file
-    with open("test_nex.nex", "w") as nex_file:
+    with open(file_name, "w") as nex_file:
         nex_file.write("#nexus\nbegin models;\n")
 
         for line in out_freqs:
@@ -218,8 +219,9 @@ def write_nexus_file(weights, model):
 
         nex_file.write("end;")
 
+    return file_name
 
-def run_iqtree_b(trees, avg_alpha, model):
+def run_iqtree_b(trees, avg_alpha, model, nexus_file):
     commands = []
 
     i = 1
@@ -235,7 +237,7 @@ def run_iqtree_b(trees, avg_alpha, model):
             "-s", "data/Dandan/toy.aln",
             "--tree-fix", tree_file.name,
             "-m", f"LG+fundi_{model}+G{{{avg_alpha}}}",
-            "--mdef", "test_nex.nex",
+            "--mdef", nexus_file,
             "-T", "8",
             "-blfix",
             "--prefix", f"test_{i}",
@@ -303,6 +305,7 @@ def main(args):
         alignment = validate_alignment(master_tree, args.alignment)
         defined_groups = validate_def_file(master_tree, args.definition)
         model = args.mixture_model
+        nexus_address = args.nexus
         denominator = int(1 / args.increment)
         a_tree, b_tree = get_ref_subtrees(master_tree, defined_groups)
 
@@ -374,11 +377,12 @@ def main(args):
         # get average weights and alpha
         avg_weights, avg_alpha = get_averages()
 
-        # generate nexus file:
-        write_nexus_file(avg_weights, model)
+        if not nexus_address:
+            # generate nexus file:
+            nexus_address = write_nexus_file(avg_weights, model)
 
         # second iqtree execution
-        run_iqtree_b(trees, avg_alpha, model)
+        run_iqtree_b(trees, avg_alpha, model, nexus_address)
 
         # To get the number of trees generated, we take number of proportions to the power of 2
         generate_summary(len(proportions) ** 2)
@@ -408,6 +412,8 @@ if __name__ == "__main__":
                         help="Mixture model to be used with iqtree")
     parser.add_argument("-i", "--increment", required=False, default=0.1,
                         help="Metric to control branch length variance, default is 0.1")
+    parser.add_argument("-mdef", "--nexus", required=False, default=None,
+                        help="Nexus file to be used with iqtree")
 
     # emulating commandline arguments for development
     sys.argv = [
