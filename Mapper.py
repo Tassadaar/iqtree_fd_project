@@ -121,12 +121,12 @@ def fix_topology(input_tree, reference_tree):
     return tree_copy
 
 
-def run_iqtree_a(tree_file, alignment, prefix, model):
+def run_iqtree_a(tree_file, alignment_address, prefix, model):
 
     iqtree_command = [
         "iqtree",
         "-nt", "2",
-        "-s", alignment,
+        "-s", alignment_address,
         "-te", tree_file,
         "-m", f"LG+{model}+G",
         "-mwopt",
@@ -165,6 +165,7 @@ def get_info(in_file):
     return weights, alpha
 
 
+# ideally this function should be split into two for performance
 def get_averages():
     a_log = "test_subset1.iqtree"
     b_log = "test_subset2.iqtree"
@@ -221,7 +222,8 @@ def write_nexus_file(weights, model):
 
     return file_name
 
-def run_iqtree_b(trees, avg_alpha, model, nexus_file):
+
+def run_iqtree_b(trees, alignment_address, avg_alpha, model, nexus_file):
     commands = []
 
     i = 1
@@ -234,7 +236,7 @@ def run_iqtree_b(trees, avg_alpha, model, nexus_file):
 
         iqtree_cmd = [
             "iqtree",
-            "-s", "data/Dandan/toy.aln",
+            "-s", alignment_address,
             "--tree-fix", tree_file.name,
             "-m", f"LG+fundi_{model}+G{{{avg_alpha}}}",
             "--mdef", nexus_file,
@@ -302,7 +304,8 @@ def main(args):
 
         assert len(master_tree.get_children()) == 2, f"Master tree must be rooted!\n {master_tree}"
 
-        alignment = validate_alignment(master_tree, args.alignment)
+        alignment_address = args.alignment
+        alignment = validate_alignment(master_tree, alignment_address)
         defined_groups = validate_def_file(master_tree, args.definition)
         model = args.mixture_model
         nexus_address = args.nexus
@@ -382,7 +385,7 @@ def main(args):
             nexus_address = write_nexus_file(avg_weights, model)
 
         # second iqtree execution
-        run_iqtree_b(trees, avg_alpha, model, nexus_address)
+        run_iqtree_b(trees, alignment_address, avg_alpha, model, nexus_address)
 
         # To get the number of trees generated, we take number of proportions to the power of 2
         generate_summary(len(proportions) ** 2)
