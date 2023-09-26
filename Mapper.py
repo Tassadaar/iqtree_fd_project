@@ -376,7 +376,7 @@ def main(args):
         defined_groups = validate_def_file(master_tree, args.definition)
         model = args.mixture_model
         nexus_address = args.nexus
-        denominator = int(1 / args.increment)
+        denominator = int(1 / float(args.increment))
         a_tree, b_tree = get_ref_subtrees(master_tree, defined_groups)
 
         with open("test_a.tree", "w") as a_tree_file:
@@ -425,13 +425,15 @@ def main(args):
             trees.append(new_master_tree)
 
         # print number of trees generated
-        print(f"{len(trees)} tree were generated")
+        print(f"{len(trees)} tree were generated\n")
 
         a_weight, b_weight = calculate_weights(a_tree, b_tree)
         avg_alpha = calculate_weighted_average_alpha(a_iqtree_file, b_iqtree_file, a_weight, b_weight)
 
         if not nexus_address:
-            avg_mixture_weights = calculate_weighted_average_mixture_weights(a_iqtree_file, b_iqtree_file, a_weight, b_weight)
+            avg_mixture_weights = calculate_weighted_average_mixture_weights(
+                a_iqtree_file, b_iqtree_file, a_weight, b_weight
+            )
             # generate nexus file:
             nexus_address = write_nexus_file(avg_mixture_weights, model)
 
@@ -471,7 +473,7 @@ if __name__ == "__main__":
     parser.add_argument("-m", "--mixture_model", required=False, default="C10",
                         help="Mixture model to be used with iqtree")
 
-    parser.add_argument("-i", "--increment", required=False, default=0.1,
+    parser.add_argument("-i", "--increment", required=False, default="0.1",
                         help="Metric to control branch length variance, default is 0.1")
 
     parser.add_argument("-mdef", "--nexus", required=False, default=None,
@@ -487,6 +489,3 @@ if __name__ == "__main__":
 
     arguments = parser.parse_args()
     main(arguments)
-    # tree = Tree("data/Dandan/toy.subset1.newick")
-    # new_tree = validate_iqtree_generated_tree("data/Dandan/toy.subset1.aln.iqtree", tree)
-    # print(new_tree)
