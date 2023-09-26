@@ -266,10 +266,15 @@ def write_nexus_file(weights, model):
                 out_freqs.append(words)
 
     # generate model section
-    weight_line = [f"model fundi_{model} = POISSON+G+FMIX{{"]
+    weight_line = f"model fundi_{model} = FMIX{{"
+    last_category = list(weights.keys())[-1]
 
-    for index, weight in weights.items():
-        weight_line.append(f"fundi_{model}pi{index}:1:{weight}" + ("," if index != list(weights.keys())[-1] else "};"))
+    for category, weight in weights.items():
+
+        if category != last_category:
+            weight_line += f"fundi_{model}pi{category}:1:{weight},"
+        else:
+            weight_line += f"fundi_{model}pi{category}:1:{weight}" + "};"
 
     # write to file
     with open(file_name, "w") as nex_file:
@@ -278,7 +283,7 @@ def write_nexus_file(weights, model):
         for line in out_freqs:
             nex_file.write(" ".join(line) + "\n")
 
-        nex_file.write("".join(weight_line) + "\n")
+        nex_file.write(weight_line + "\n")
 
         nex_file.write("end;")
 
@@ -457,13 +462,18 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Tree mapper")
 
     parser.add_argument("-te", "--tree", required=True, help="Tree file in newick format, must be rooted")
+
     parser.add_argument("-s", "--alignment", required=True, help="Alignment in fasta format")
+
     parser.add_argument("-d", "--definition", required=True,
                         help="Definition file that splits the tree by FunDi branch")
+
     parser.add_argument("-m", "--mixture_model", required=False, default="C10",
                         help="Mixture model to be used with iqtree")
+
     parser.add_argument("-i", "--increment", required=False, default=0.1,
                         help="Metric to control branch length variance, default is 0.1")
+
     parser.add_argument("-mdef", "--nexus", required=False, default=None,
                         help="Nexus file to be used with iqtree")
 
