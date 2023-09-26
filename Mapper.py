@@ -138,9 +138,17 @@ def run_iqtree_a(tree_file, alignment_address, prefix, model):
     subprocess.run(iqtree_command)
 
 
+def calculate_weights(a_tree, b_tree):
+    a_taxa_count = len(a_tree.get_leaf_names())
+    b_taxa_count = len(b_tree.get_leaf_names())
+    total_taxa_count = a_taxa_count + b_taxa_count
+
+    return a_taxa_count / total_taxa_count, b_taxa_count / total_taxa_count
+
+
 # get weights from iqtree log file, returns empty set if not found
-def get_weights(iqtree_file):
-    weights = {}
+def get_mixture_weights(iqtree_file):
+    mixture_weights = {}
 
     if not os.path.isfile(iqtree_file):
         raise FileNotFoundError(f"'{iqtree_file}' does not exist!")
@@ -159,12 +167,12 @@ def get_weights(iqtree_file):
 
             if section_found:
                 words = line.split()
-                weights[words[0]] = float(words[3])
+                mixture_weights[words[0]] = float(words[3])
 
             if "Gamma shape alpha:" in line:
                 break
 
-    return weights
+    return mixture_weights
 
 
 # get alpha from iqtree log file, returns None if not found
@@ -187,22 +195,25 @@ def get_alpha(iqtree_file):
     return alpha
 
 
-def calculate_average_weights(a_log_file, b_log_file):
-    a_weights = get_weights(a_log_file)
-    b_weights = get_weights(b_log_file)
+def calculate_weighted_average_mixture_weights(a_log_file, b_log_file, a_weight, b_weight):
+    a_mixture_weights = get_mixture_weights(a_log_file)
+    b_mixture_weights = get_mixture_weights(b_log_file)
 
-    if not a_weights:
+    if not a_mixture_weights:
         raise ValueError(f"Cannot extract weights, check if '{a_log_file}' is formatted correctly!")
 
-    if not b_weights:
+    if not b_mixture_weights:
         raise ValueError(f"Cannot extract weights, check if '{a_log_file}' is formatted correctly!")
 
-    avg_weights = {key: (a_weight + b_weights[key]) / 2 for key, a_weight in a_weights.items()}
+    avg_mixture_weights = {
+        key: (a_mixture_weight * a_weight + b_mixture_weights[key] * b_weight) / 2
+        for key, a_mixture_weight in a_mixture_weights.items()
+    }
 
-    return avg_weights
+    return avg_mixture_weights
 
 
-def calculate_average_alpha(a_log_file, b_log_file):
+def calculate_weighted_average_alpha(a_log_file, b_log_file, a_weight, b_weight):
     a_alpha = get_alpha(a_log_file)
     b_alpha = get_alpha(b_log_file)
 
@@ -212,7 +223,7 @@ def calculate_average_alpha(a_log_file, b_log_file):
     if not b_alpha:
         raise ValueError(f"Cannot extract weights, check if '{a_log_file}' is formatted correctly!")
 
-    return (a_alpha + b_alpha) / 2
+    return (a_alpha * a_weight + b_alpha * b_weight) / 2
 
 
 def write_nexus_file(weights, model):
@@ -415,12 +426,13 @@ def main(args):
         # print number of trees generated
         print(f"{len(trees)} tree were generated")
 
-        avg_alpha = calculate_average_alpha(a_iqtree_file, b_iqtree_file)
+        a_weight, b_weight = calculate_weights(new_a_tree, new_b_tree)
+        avg_alpha = calculate_weighted_average_alpha(a_iqtree_file, b_iqtree_file, a_weight, b_weight)
 
         if not nexus_address:
-            avg_weights = calculate_average_weights(a_iqtree_file, b_iqtree_file)
+            avg_mixture_weights = calculate_weighted_average_mixture_weights(a_iqtree_file, b_iqtree_file, a_weight, b_weight)
             # generate nexus file:
-            nexus_address = write_nexus_file(avg_weights, model)
+            nexus_address = write_nexus_file(avg_mixture_weights, model)
 
         # second iqtree execution
         run_iqtree_b(trees, alignment_address, avg_alpha, model, nexus_address)
