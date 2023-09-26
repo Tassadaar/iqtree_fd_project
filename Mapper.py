@@ -1,3 +1,4 @@
+import os
 import sys
 import argparse
 import subprocess
@@ -137,11 +138,14 @@ def run_iqtree_a(tree_file, alignment_address, prefix, model):
     subprocess.run(iqtree_command)
 
 
-def get_info(in_file):
+# get weights from iqtree log file, returns empty set if not found
+def get_weights(iqtree_file):
     weights = {}
-    alpha = 0
 
-    with open(in_file, "r") as file:
+    if not os.path.isfile(iqtree_file):
+        raise FileNotFoundError(f"'{iqtree_file}' does not exist!")
+
+    with open(iqtree_file, "r") as file:
         section_found = False
 
         for line in file:
@@ -158,25 +162,57 @@ def get_info(in_file):
                 weights[words[0]] = float(words[3])
 
             if "Gamma shape alpha:" in line:
-                words = line.split()
-                alpha = float(words[3])
                 break
 
-    return weights, alpha
+    return weights
 
 
-# ideally this function should be split into two for performance
-def get_averages():
-    a_log = "test_subset1.iqtree"
-    b_log = "test_subset2.iqtree"
+# get alpha from iqtree log file, returns None if not found
+def get_alpha(iqtree_file):
+    alpha = None
 
-    a_weights, a_alpha = get_info(a_log)
-    b_weights, b_alpha = get_info(b_log)
+    if not os.path.isfile(iqtree_file):
+        raise FileNotFoundError(f"'{iqtree_file}' does not exist!")
+
+    with open(iqtree_file, "r") as file:
+
+        for line in file:
+
+            if "Gamma shape alpha:" in line:
+                words = line.split()
+                alpha = float(words[3])
+
+                return alpha
+
+    return alpha
+
+
+def calculate_average_weights(a_log_file, b_log_file):
+    a_weights = get_weights(a_log_file)
+    b_weights = get_weights(b_log_file)
+
+    if not a_weights:
+        raise ValueError(f"Cannot extract weights, check if '{a_log_file}' is formatted correctly!")
+
+    if not b_weights:
+        raise ValueError(f"Cannot extract weights, check if '{a_log_file}' is formatted correctly!")
 
     avg_weights = {key: (a_weight + b_weights[key]) / 2 for key, a_weight in a_weights.items()}
-    avg_alpha = (a_alpha + b_alpha) / 2
 
-    return avg_weights, avg_alpha
+    return avg_weights
+
+
+def calculate_average_alpha(a_log_file, b_log_file):
+    a_alpha = get_alpha(a_log_file)
+    b_alpha = get_alpha(b_log_file)
+
+    if not a_alpha:
+        raise ValueError(f"Cannot extract weights, check if '{a_log_file}' is formatted correctly!")
+
+    if not b_alpha:
+        raise ValueError(f"Cannot extract weights, check if '{a_log_file}' is formatted correctly!")
+
+    return (a_alpha + b_alpha) / 2
 
 
 def write_nexus_file(weights, model):
@@ -346,6 +382,8 @@ def main(args):
         # first iqtree execution
         run_iqtree_a("test_a.tree", "test_a.aln", "test_subset1", model)
         run_iqtree_a("test_b.tree", "test_b.aln", "test_subset2", model)
+        a_iqtree_file = "test_subset1.iqtree"
+        b_iqtree_file = "test_subset2.iqtree"
 
         trees = []
         proportions = [x / denominator for x in range(1, denominator)]
@@ -377,10 +415,10 @@ def main(args):
         # print number of trees generated
         print(f"{len(trees)} tree were generated")
 
-        # get average weights and alpha
-        avg_weights, avg_alpha = get_averages()
+        avg_alpha = calculate_average_alpha(a_iqtree_file, b_iqtree_file)
 
         if not nexus_address:
+            avg_weights = calculate_average_weights(a_iqtree_file, b_iqtree_file)
             # generate nexus file:
             nexus_address = write_nexus_file(avg_weights, model)
 
@@ -398,6 +436,9 @@ def main(args):
 
     except ValueError as e:
         print(f"Fatal: {e} Check if inputs are valid!")
+
+    except FileNotFoundError as e:
+        print(f"File not found! {e}")
 
     finally:
         print("\nSystem exiting...")
