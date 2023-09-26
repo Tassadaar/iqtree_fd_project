@@ -89,11 +89,11 @@ def write_alignment_partitions(alignment, a_tree, b_tree):
                 b_aln_file.write(f"{record.seq}\n")
 
 
-def run_iqtree_a(tree_file, alignment_address, prefix, model):
+def run_iqtree_a(tree_file, alignment_address, prefix, model, cores):
 
     iqtree_command = [
         "iqtree",
-        "-nt", "2",
+        "-nt", cores,
         "-s", alignment_address,
         "-te", tree_file,
         "-m", f"LG+{model}+G",
@@ -290,7 +290,7 @@ def write_nexus_file(weights, model):
     return file_name
 
 
-def run_iqtree_b(trees, alignment_address, avg_alpha, model, nexus_file):
+def run_iqtree_b(trees, alignment_address, avg_alpha, model, nexus_file, cores):
     commands = []
 
     i = 1
@@ -307,7 +307,7 @@ def run_iqtree_b(trees, alignment_address, avg_alpha, model, nexus_file):
             "--tree-fix", tree_file.name,
             "-m", f"LG+fundi_{model}+G{{{avg_alpha}}}",
             "--mdef", nexus_file,
-            "-T", "8",
+            "-nt", cores,
             "-blfix",
             "--prefix", f"test_{i}",
             "-prec", "10",
@@ -376,6 +376,7 @@ def main(args):
         defined_groups = validate_def_file(master_tree, args.definition)
         model = args.mixture_model
         nexus_address = args.nexus
+        cores = args.cores
         denominator = int(1 / float(args.increment))
         a_tree, b_tree = get_ref_subtrees(master_tree, defined_groups)
 
@@ -388,8 +389,8 @@ def main(args):
         write_alignment_partitions(alignment, a_tree, b_tree)
 
         # first iqtree execution
-        run_iqtree_a("test_a.tree", "test_a.aln", "test_subset1", model)
-        run_iqtree_a("test_b.tree", "test_b.aln", "test_subset2", model)
+        run_iqtree_a("test_a.tree", "test_a.aln", "test_subset1", model, cores)
+        run_iqtree_a("test_b.tree", "test_b.aln", "test_subset2", model, cores)
         a_iqtree_file = "test_subset1.iqtree"
         b_iqtree_file = "test_subset2.iqtree"
 
@@ -438,7 +439,7 @@ def main(args):
             nexus_address = write_nexus_file(avg_mixture_weights, model)
 
         # second iqtree execution
-        run_iqtree_b(trees, alignment_address, avg_alpha, model, nexus_address)
+        run_iqtree_b(trees, alignment_address, avg_alpha, model, nexus_address, cores)
 
         # To get the number of trees generated, we take number of proportions to the power of 2
         generate_summary(len(proportions) ** 2)
@@ -478,6 +479,9 @@ if __name__ == "__main__":
 
     parser.add_argument("-mdef", "--nexus", required=False, default=None,
                         help="Nexus file to be used with iqtree")
+
+    parser.add_argument("-nt", "--cores", required=False, default="2",
+                        help="Number of CPU cores to use")
 
     # emulating commandline arguments for development
     sys.argv = [
