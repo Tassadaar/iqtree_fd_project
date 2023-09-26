@@ -149,7 +149,7 @@ def validate_iqtree_generated_tree(iqtree_file, ref_tree):
 
     if iqtree.robinson_foulds(ref_tree)[0] != 0:
         fix_topology(iqtree)
-    
+
     return iqtree
 
 
@@ -161,56 +161,36 @@ def calculate_weights(a_tree, b_tree):
     return a_taxa_count / total_taxa_count, b_taxa_count / total_taxa_count
 
 
-# get weights from iqtree log file, returns empty set if not found
-def get_mixture_weights(iqtree_file):
-    mixture_weights = {}
-
-    if not os.path.isfile(iqtree_file):
-        raise FileNotFoundError(f"'{iqtree_file}' does not exist!")
-
-    with open(iqtree_file, "r") as file:
-        section_found = False
-
-        for line in file:
-
-            if "No  Component      Rate    Weight   Parameters" in line:
-                section_found = True
-                continue
-
-            if line == "\n":
-                section_found = False
-
-            if section_found:
-                words = line.split()
-                mixture_weights[words[0]] = float(words[3])
-
-            if "Gamma shape alpha:" in line:
-                break
-
-    return mixture_weights
-
-
-# get alpha from iqtree log file, returns None if not found
-def get_alpha(iqtree_file):
-    alpha = None
-
-    if not os.path.isfile(iqtree_file):
-        raise FileNotFoundError(f"'{iqtree_file}' does not exist!")
-
-    with open(iqtree_file, "r") as file:
-
-        for line in file:
-
-            if "Gamma shape alpha:" in line:
-                words = line.split()
-                alpha = float(words[3])
-
-                return alpha
-
-    return alpha
-
-
 def calculate_weighted_average_mixture_weights(a_log_file, b_log_file, a_weight, b_weight):
+
+    # get weights from iqtree log file, returns empty set if not found
+    def get_mixture_weights(iqtree_file):
+        mixture_weights = {}
+
+        if not os.path.isfile(iqtree_file):
+            raise FileNotFoundError(f"'{iqtree_file}' does not exist!")
+
+        with open(iqtree_file, "r") as file:
+            section_found = False
+
+            for line in file:
+
+                if "No  Component      Rate    Weight   Parameters" in line:
+                    section_found = True
+                    continue
+
+                if line == "\n":
+                    section_found = False
+
+                if section_found:
+                    words = line.split()
+                    mixture_weights[words[0]] = float(words[3])
+
+                if "Gamma shape alpha:" in line:
+                    break
+
+        return mixture_weights
+
     a_mixture_weights = get_mixture_weights(a_log_file)
     b_mixture_weights = get_mixture_weights(b_log_file)
 
@@ -229,6 +209,26 @@ def calculate_weighted_average_mixture_weights(a_log_file, b_log_file, a_weight,
 
 
 def calculate_weighted_average_alpha(a_log_file, b_log_file, a_weight, b_weight):
+
+    # get alpha from iqtree log file, returns None if not found
+    def get_alpha(iqtree_file):
+        alpha = None
+
+        if not os.path.isfile(iqtree_file):
+            raise FileNotFoundError(f"'{iqtree_file}' does not exist!")
+
+        with open(iqtree_file, "r") as file:
+
+            for line in file:
+
+                if "Gamma shape alpha:" in line:
+                    words = line.split()
+                    alpha = float(words[3])
+
+                    return alpha
+
+        return alpha
+
     a_alpha = get_alpha(a_log_file)
     b_alpha = get_alpha(b_log_file)
 
