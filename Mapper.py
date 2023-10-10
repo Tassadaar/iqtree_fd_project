@@ -308,9 +308,9 @@ def run_iqtree_b(trees, alignment_address, avg_alpha, model, nexus_file, cores, 
             "-m", f"LG+fundi_{model}+G{{{avg_alpha}}}",
             "--mdef", nexus_file,
             "-nt", cores,
-            "-blfix",
             "--prefix", f"test_{i}",
             "-prec", "10",
+            "-blfix",
             "--fundi", f"{','.join(leaves)},estimate",
             "-redo",
         ]
@@ -325,27 +325,37 @@ def run_iqtree_b(trees, alignment_address, avg_alpha, model, nexus_file, cores, 
 
 def generate_summary(tree_count):
 
-    # get likelihoods
-    likelihoods = {}
+    # get attributes
+    attributes = {}
 
     i = 1
     while i <= tree_count:
+        attribute = [0, 0, 0]  # a list of two attributes, fundi log-likelihood, rho value and central branch length
 
-        with open(f"test_{i}.iqtree", "r") as iqtree_file:
+        with open(f"test_{i}.log", "r") as iqtree_file:
 
             for line in iqtree_file:
 
-                if "Log-likelihood of the tree:" not in line:
+                if "Best FunDi parameter rho:" in line:
+                    words = line.split()
+                    attribute[1] = float(words[4])
                     continue
 
-                words = line.split()
-                likelihoods[i] = float(words[4])
-                continue
+                if "Best FunDi central branch length:" in line:
+                    words = line.split()
+                    attribute[2] = float(words[5])
+                    continue
 
+                if "FunDi log-likelihood:" in line:
+                    words = line.split()
+                    attribute[0] = float(words[2])
+                    break
+
+        attributes[i] = attribute
         i += 1
 
     # get best tree
-    best_tree_index = max(likelihoods, key=likelihoods.get)
+    best_tree_index = max(attributes, key=lambda key: attributes[key][0])
     best_tree = None
 
     with open(f"test_{best_tree_index}.iqtree", "r") as tree_file:
@@ -370,15 +380,10 @@ def generate_summary(tree_count):
     tree_style.show_branch_support = True
     tree_style.branch_vertical_margin = 10
 
-    # suppress internal node names
-    node_style = NodeStyle()
-    node_style["size"] = 0
-
     for node in best_tree.traverse():
 
         if not node.is_leaf():
-            node.name = ""
-            node.set_style(node_style)
+            node.name = "node"
 
     best_tree.render(file_name=f"test_{best_tree_index}.png", tree_style=tree_style, units="px", w=800, h=1000)
 
@@ -386,14 +391,19 @@ def generate_summary(tree_count):
     with open("test_summary.txt", "w") as summary_file:
 
         summary_file.write(
-            f"Tree {best_tree_index} has the largest log-likelihood of {likelihoods[best_tree_index]}.\n"
+            f"Tree {best_tree_index} has the largest funDi log-likelihood of {attributes[best_tree_index][0]}.\n"
+            f"rho: {attributes[best_tree_index][1]}.\n"
+            f"Central branch length: {attributes[best_tree_index][2]}\n"
         )
+
         # print tree with branch lengths
-        summary_file.write(f"{best_tree.get_ascii(attributes=['name', 'dist'], show_internal=False)}\n\n")
+        summary_file.write(f"{best_tree.get_ascii(attributes=['name', 'dist'], show_internal=True)}\n\n")
         summary_file.write(f"See \"test_{best_tree_index}.png\" for a tree illustration.\n\n")
 
-        for tree, likelihood in likelihoods.items():
-            summary_file.write(f"Log-likelihood of the tree {tree}: {likelihood}\n")
+        for tree, attribute in attributes.items():
+            summary_file.write(f"funDi Log-likelihood of the tree {tree}: {attribute[0]}; "
+                               f"rho: {attribute[1]}; "
+                               f"central branch length: {attribute[2]}\n")
 
 
 def main(args):
@@ -527,5 +537,4 @@ if __name__ == "__main__":
     ]
 
     arguments = parser.parse_args()
-    # main(arguments)
-    generate_summary(4)
+    main(arguments)
