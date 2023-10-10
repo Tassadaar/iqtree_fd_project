@@ -290,7 +290,7 @@ def write_nexus_file(weights, model):
     return file_name
 
 
-def run_iqtree_b(trees, alignment_address, avg_alpha, model, nexus_file, cores):
+def run_iqtree_b(trees, alignment_address, avg_alpha, model, nexus_file, cores, leaves):
     commands = []
 
     i = 1
@@ -311,6 +311,8 @@ def run_iqtree_b(trees, alignment_address, avg_alpha, model, nexus_file, cores):
             "-blfix",
             "--prefix", f"test_{i}",
             "-prec", "10",
+            "--fundi", f"{','.join(leaves)},estimate",
+            "-redo",
         ]
 
         commands.append(iqtree_cmd)
@@ -379,6 +381,7 @@ def main(args):
         cores = args.cores
         denominator = int(1 / float(args.increment))
         a_tree, b_tree = get_ref_subtrees(master_tree, defined_groups)
+        a_leaves = a_tree.get_leaf_names()
 
         with open("test_a.tree", "w") as a_tree_file:
             a_tree_file.write(a_tree.write())
@@ -439,7 +442,7 @@ def main(args):
             nexus_address = write_nexus_file(avg_mixture_weights, model)
 
         # second iqtree execution
-        run_iqtree_b(trees, alignment_address, avg_alpha, model, nexus_address, cores)
+        run_iqtree_b(trees, alignment_address, avg_alpha, model, nexus_address, cores, a_leaves)
 
         # To get the number of trees generated, we take number of proportions to the power of 2
         generate_summary(len(proportions) ** 2)
@@ -486,9 +489,10 @@ if __name__ == "__main__":
     # emulating commandline arguments for development
     sys.argv = [
         "Mapper.py",
-        "-te", "data/Dandan/toy.newick",
-        "-d", "data/Dandan/toy.def",
-        "-s", "data/Dandan/toy.aln",
+        "-te", "data/Hector/TAB",
+        "-d", "data/Hector/def",
+        "-s", "data/Hector/conAB1rho50.fa",
+        "-i", "0.1"
     ]
 
     arguments = parser.parse_args()
