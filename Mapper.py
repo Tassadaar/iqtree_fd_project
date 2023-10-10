@@ -3,7 +3,7 @@ import sys
 import argparse
 import subprocess
 from itertools import product
-from ete3 import Tree, TreeNode
+from ete3 import Tree, TreeStyle, TreeNode, NodeStyle
 from Bio import AlignIO
 
 
@@ -324,6 +324,8 @@ def run_iqtree_b(trees, alignment_address, avg_alpha, model, nexus_file, cores, 
 
 
 def generate_summary(tree_count):
+
+    # get likelihoods
     likelihoods = {}
 
     i = 1
@@ -342,24 +344,53 @@ def generate_summary(tree_count):
 
         i += 1
 
-    with open("test_summary.txt", "w") as summary_file:
+    # get best tree
+    best_tree_index = max(likelihoods, key=likelihoods.get)
+    best_tree = None
 
-        best_tree = max(likelihoods, key=likelihoods.get)
-        summary_file.write(f"Tree {best_tree} has the largest log-likelihood of {likelihoods[best_tree]}.\n\n")
+    with open(f"test_{best_tree_index}.iqtree", "r") as tree_file:
+        section_found = False
 
-        with open(f"test_{best_tree}.iqtree", "r") as tree_file:
-            section_found = False
+        for line in tree_file:
 
-            for line in tree_file:
+            if "Tree in newick format:" in line:
+                section_found = True
+                continue
 
-                if "NOTE: Tree is UNROOTED" in line:
-                    section_found = True
+            if section_found is True:
 
-                if "Tree in newick format:" in line:
+                if line != "\n":
+                    best_tree = Tree(line)
                     break
 
-                if section_found is True:
-                    summary_file.write(line)
+    # style the tree
+    tree_style = TreeStyle()
+    tree_style.show_leaf_name = True
+    tree_style.show_branch_length = True
+    tree_style.show_branch_support = True
+    tree_style.branch_vertical_margin = 10
+
+    # suppress internal node names
+    node_style = NodeStyle()
+    node_style["size"] = 0
+
+    for node in best_tree.traverse():
+
+        if not node.is_leaf():
+            node.name = ""
+            node.set_style(node_style)
+
+    best_tree.render(file_name=f"test_{best_tree_index}.png", tree_style=tree_style, units="px", w=800, h=1000)
+
+    # print to summary file
+    with open("test_summary.txt", "w") as summary_file:
+
+        summary_file.write(
+            f"Tree {best_tree_index} has the largest log-likelihood of {likelihoods[best_tree_index]}.\n"
+        )
+        # print tree with branch lengths
+        summary_file.write(f"{best_tree.get_ascii(attributes=['name', 'dist'], show_internal=False)}\n\n")
+        summary_file.write(f"See \"test_{best_tree_index}.png\" for a tree illustration.\n\n")
 
         for tree, likelihood in likelihoods.items():
             summary_file.write(f"Log-likelihood of the tree {tree}: {likelihood}\n")
@@ -492,8 +523,9 @@ if __name__ == "__main__":
         "-te", "data/Hector/TAB",
         "-d", "data/Hector/def",
         "-s", "data/Hector/conAB1rho50.fa",
-        "-i", "0.1"
+        "-i", "0.3"
     ]
 
     arguments = parser.parse_args()
-    main(arguments)
+    # main(arguments)
+    generate_summary(4)
