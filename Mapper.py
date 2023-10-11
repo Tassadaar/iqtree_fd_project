@@ -99,7 +99,8 @@ def run_iqtree_a(tree_file, alignment_address, prefix, model, cores):
         "-m", f"LG+{model}+G",
         "-mwopt",
         "-prec", "10",
-        "--prefix", prefix
+        "--prefix", prefix,
+        "--quiet"
     ]
 
     subprocess.run(iqtree_command)
@@ -313,6 +314,7 @@ def run_iqtree_b(trees, alignment_address, avg_alpha, model, nexus_file, cores, 
             "-blfix",
             "--fundi", f"{','.join(leaves)},estimate",
             "-redo",
+            "--quiet"
         ]
 
         commands.append(iqtree_cmd)
@@ -320,6 +322,7 @@ def run_iqtree_b(trees, alignment_address, avg_alpha, model, nexus_file, cores, 
 
     # second iqtree run
     for command in commands:
+        print(f"Running iqtree funDi on Tree {commands.index(command) + 1} out of {len(commands)}...")
         subprocess.run(command)
 
 
@@ -354,7 +357,7 @@ def generate_summary(tree_count):
         attributes[i] = attribute
         i += 1
 
-    # get best tree
+    # get the best tree based on funDi log-likelihood
     best_tree_index = max(attributes, key=lambda key: attributes[key][0])
     best_tree = None
 
@@ -377,9 +380,9 @@ def generate_summary(tree_count):
     tree_style = TreeStyle()
     tree_style.show_leaf_name = True
     tree_style.show_branch_length = True
-    tree_style.show_branch_support = True
     tree_style.branch_vertical_margin = 10
 
+    # give each internal node an explicit name
     for node in best_tree.traverse():
 
         if not node.is_leaf():
@@ -388,6 +391,8 @@ def generate_summary(tree_count):
     best_tree.render(file_name=f"test_{best_tree_index}.png", tree_style=tree_style, units="px", w=800, h=1000)
 
     # print to summary file
+    print("Generating summary...")
+
     with open("test_summary.txt", "w") as summary_file:
 
         summary_file.write(
@@ -404,6 +409,8 @@ def generate_summary(tree_count):
             summary_file.write(f"funDi Log-likelihood of the tree {tree}: {attribute[0]}; "
                                f"rho: {attribute[1]}; "
                                f"central branch length: {attribute[2]}\n")
+
+    print("Summary generated under 'test_summary.txt'.")
 
 
 def main(args):
@@ -433,7 +440,9 @@ def main(args):
         write_alignment_partitions(alignment, a_tree, b_tree)
 
         # first iqtree execution
+        print("Running iqtree on subtree a...")
         run_iqtree_a("test_a.tree", "test_a.aln", "test_subset1", model, cores)
+        print("Running iqtree on subtree b...")
         run_iqtree_a("test_b.tree", "test_b.aln", "test_subset2", model, cores)
         a_iqtree_file = "test_subset1.iqtree"
         b_iqtree_file = "test_subset2.iqtree"
