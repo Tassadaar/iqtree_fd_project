@@ -201,7 +201,7 @@ def calculate_weighted_average_mixture_weights(a_log_file, b_log_file, a_weight,
         raise ValueError(f"Cannot extract weights, check if '{a_log_file}' is formatted correctly!")
 
     avg_mixture_weights = {
-        key: (a_mixture_weight * a_weight + b_mixture_weights[key] * b_weight) / 2
+        key: a_mixture_weight * a_weight + b_mixture_weights[key] * b_weight
         for key, a_mixture_weight in a_mixture_weights.items()
     }
 
@@ -238,7 +238,7 @@ def calculate_weighted_average_alpha(a_log_file, b_log_file, a_weight, b_weight)
     if not b_alpha:
         raise ValueError(f"Cannot extract weights, check if '{a_log_file}' is formatted correctly!")
 
-    return (a_alpha * a_weight + b_alpha * b_weight) / 2
+    return a_alpha * a_weight + b_alpha * b_weight
 
 
 def write_nexus_file(weights, model):
@@ -532,8 +532,8 @@ if __name__ == "__main__":
         "Mapper.py",
         "-te", "data/Hector/TAB",
         "-d", "data/Hector/def",
-        "-s", "data/Hector/conAB1rho50.fa",
-        "-i", "0.3"
+        "-s", "data/Hector/conAB1rho60.fa",
+        "-i", "0.1"
     ]
 
     arguments = parser.parse_args()
