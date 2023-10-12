@@ -7,51 +7,67 @@ from ete3 import Tree, TreeStyle, TreeNode, NodeStyle
 from Bio import AlignIO
 
 
-def validate_alignment(tree, alignment_address):
+def validate_alignment(tree, alignment_file):
+    '''
+    Does the alignment have the exact same set of taxa
+    as the tree?
+    '''
     # parsing fasta file
-    alignment = AlignIO.read(alignment_address, "fasta")
+    alignment = AlignIO.read(alignment_file, "fasta")
     seq_ids = set(record.id for record in alignment)
+
+    # TODO: raise error if alignment contains non-unique taxa names
 
     for taxon in tree.get_leaf_names():
 
         if taxon not in seq_ids:
-            raise ValueError(f"Taxon {taxon} does not have alignment information.")
+            raise ValueError(f"Tree taxon {taxon} does not exist in the alignment file")
 
     return alignment
 
 
-def validate_def_file(tree, def_address):
+def validate_def_file(tree, def_file):
     # store definition file in memory
     # as a list of two lists of taxa
-    with open(def_address, "r") as def_file:
-        leaf_groups = [line.split() for line in def_file]
+    with open(def_file, "r") as file:
+        taxa_groups = [line.split() for line in file]
 
-    if len(leaf_groups) != 2:
-        raise ValueError(f"Definition file is not in the right format.")
+    # check 1: definition file must have exactly two groups of taxa
+    if len(taxa_groups) != 2:
+        raise ValueError(f"Definition file does not have exactly two groups of taxa")
+    # IDEA: check if the two groups of taxa are non-overlapping. Is there a taxon in both groups?
 
-    leaves = leaf_groups[0] + leaf_groups[1]
-    remainder_leaves = leaves.copy()
+    # check 2: taxa in definition file must all be in the tree
+    all_taxa = taxa_groups[0] + taxa_groups[1]
 
-    for taxon in tree.get_leaf_names():
+    # TODO: can this be simplified using sets maybe?
+    remainder_taxa = all_taxa.copy()
 
-        if taxon not in leaves:
-            raise ValueError(f"Taxon {taxon} is undefined in the definition file")
+    for leaf in tree.get_leaf_names():
 
-        remainder_leaves.remove(taxon)
+        if leaf not in all_taxa:
+            raise ValueError(f"Tree taxon {taxon} does not exist in the definition file")
 
-    if remainder_leaves:
+        remainder_taxa.remove(leaf)
 
-        if len(remainder_leaves) == 1:
-            raise ValueError(f"Taxon {{{remainder_leaves.pop()}}} in the definition file do not exist in the tree.")
+    # check 3: are there any taxa in the definition file that do not exist in the tree file?
+    if remainder_taxa:
+
+        if len(remainder_taxa) == 1:
+            raise ValueError(f"Taxon {{{remainder_leaves.pop()}}} in the definition file does not exist in the tree.")
         else:
             raise ValueError(f"Taxa {{{', '.join(remainder_leaves)}}} in the definition file do not exist in the tree.")
 
-    return leaf_groups
+    return taxa_groups
 
 
 def get_ref_subtrees(master_tree, leaf_groups):
     # this is good practice, but it currently breaks the code
     # master_tree_copy = master_tree.copy("deepcopy")
+
+    # we declare these as None, so that if
+    # in the code below they are not replaced with actual objects,
+    # we can catch the error later
     a_tree = None
     b_tree = None
 
@@ -63,6 +79,7 @@ def get_ref_subtrees(master_tree, leaf_groups):
             master_tree.set_outgroup(common_ancestor)
             a_tree, b_tree = master_tree.get_children()
 
+    
     return a_tree, b_tree
 
 
@@ -92,7 +109,7 @@ def write_alignment_partitions(alignment, a_tree, b_tree):
 def run_iqtree_a(tree_file, alignment_address, prefix, model, cores):
 
     iqtree_command = [
-        "iqtree",
+        "iqtree2",
         "-nt", cores,
         "-s", alignment_address,
         "-te", tree_file,
@@ -303,7 +320,7 @@ def run_iqtree_b(trees, alignment_address, avg_alpha, model, nexus_file, cores, 
             tree_file.write(tree.write())
 
         iqtree_cmd = [
-            "iqtree",
+            "iqtree2",
             "-s", alignment_address,
             "--tree-fix", tree_file.name,
             "-m", f"LG+fundi_{model}+G{{{avg_alpha}}}",
@@ -417,17 +434,18 @@ def main(args):
 
     try:
         master_tree = Tree(args.tree)
-        master_tree.set_outgroup(master_tree.get_children()[0])  # the master tree needs to be rooted for ete3
 
-        assert len(master_tree.get_children()) == 2, f"Master tree must be rooted!\n {master_tree}"
+        # NOTE: is this absolutely necessary?
+        # master_tree.set_outgroup(master_tree.get_children()[0])  # the master tree needs to be rooted for ete3
+        # assert len(master_tree.get_children()) == 2, f"Master tree must be rooted!\n {master_tree}"
 
+        # TODO: remove "redundant" variable names for arg arguments
         alignment_address = args.alignment
         alignment = validate_alignment(master_tree, alignment_address)
         defined_groups = validate_def_file(master_tree, args.definition)
         model = args.mixture_model
         nexus_address = args.nexus
         cores = args.cores
-        denominator = int(1 / float(args.increment))
         a_tree, b_tree = get_ref_subtrees(master_tree, defined_groups)
         a_leaves = a_tree.get_leaf_names()
 
@@ -452,6 +470,7 @@ def main(args):
         b_tree = validate_iqtree_generated_tree(b_iqtree_file, b_tree)
 
         trees = []
+        denominator = int(1 / float(args.increment))
         proportions = [x / denominator for x in range(1, denominator)]
         a_branch = a_tree.get_children()[0].dist + a_tree.get_children()[1].dist
         b_branch = b_tree.get_children()[0].dist + b_tree.get_children()[1].dist
@@ -536,14 +555,14 @@ if __name__ == "__main__":
     parser.add_argument("-nt", "--cores", required=False, default="2",
                         help="Number of CPU cores to use")
 
-    # emulating commandline arguments for development
-    sys.argv = [
-        "Mapper.py",
-        "-te", "data/Hector/TAB",
-        "-d", "data/Hector/def",
-        "-s", "data/Hector/conAB1rho60.fa",
-        "-i", "0.1"
-    ]
+    # # emulating commandline arguments for development
+    # sys.argv = [
+    #     "Mapper.py",
+    #     "-te", "data/Hector/TAB",
+    #     "-d", "data/Hector/def",
+    #     "-s", "data/Hector/conAB1rho60.fa",
+    #     "-i", "0.1"
+    # ]
 
     arguments = parser.parse_args()
     main(arguments)
