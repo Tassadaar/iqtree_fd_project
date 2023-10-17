@@ -84,6 +84,10 @@ def get_ref_subtrees(master_tree, leaf_groups):
 
 
 def write_alignment_partitions(alignment, a_tree, b_tree):
+    # TODO: use a_tree.get_leaf_names() directly, rather than storing it seperately
+    # TODO: use
+    ## AlignIO.write(my_records, "my_example.faa", "fasta")
+    ## to write alignment partition files
     a_leaves = a_tree.get_leaf_names()
     b_leaves = b_tree.get_leaf_names()
 
@@ -106,69 +110,72 @@ def write_alignment_partitions(alignment, a_tree, b_tree):
                 b_aln_file.write(f"{record.seq}\n")
 
 
-def run_iqtree_a(tree_file, alignment_address, prefix, model, cores):
+# DEPRECATED
+# def run_iqtree_a(tree_file, alignment_address, prefix, model, cores):
 
-    iqtree_command = [
-        "iqtree2",
-        "-nt", cores,
-        "-s", alignment_address,
-        "-te", tree_file,
-        "-m", f"LG+{model}+G",
-        "-mwopt",
-        "-prec", "10",
-        "--prefix", prefix,
-        "--quiet"
-    ]
+#     iqtree_command = [
+#         "iqtree2",
+#         "-nt", cores,
+#         "-s", alignment_address,
+#         "-te", tree_file,
+#         "-m", f"LG+{model}+G",
+#         "-mwopt",
+#         "-prec", "10",
+#         "--prefix", prefix,
+#         "--quiet"
+#     ]
 
-    subprocess.run(iqtree_command)
+#     subprocess.run(iqtree_command)
 
 
-def validate_iqtree_generated_tree(iqtree_file, ref_tree):
+def conform_iqtree_tree(iqtree_file, ref_tree):
 
-    def fix_topology(input_tree):
-        ref_outgroup_leaves = ref_tree.get_children()[0].get_leaf_names()
-
-        if len(ref_outgroup_leaves) == 1:
-            outgroup = ref_outgroup_leaves[0]
-        else:
-            outgroup = input_tree.get_common_ancestor(*ref_outgroup_leaves)
-
-            if outgroup.is_root():
-
-                for leaf in input_tree.get_leaf_names():
-
-                    if leaf not in ref_outgroup_leaves:
-                        input_tree.set_outgroup(leaf)
-                        outgroup = input_tree.get_common_ancestor(*ref_outgroup_leaves)
-
-        input_tree.set_outgroup(outgroup)
-
-    iqtree = None
-
+    # extracting subtree from iqtree file
+    iqtree_tree = None
     with open(iqtree_file, "r") as file:
-        section_found = False
+        # section_found = False
 
         for line in file:
 
             if "Tree in newick format:" in line:
-                section_found = True
-                continue
+                next(file)
+                iqtree_tree = Tree(next(file))
+                # section_found = True
+                # continue
 
-            if line == "\n":
-                continue
+            # if line == "\n":
+                # continue
 
-            if section_found:
-                iqtree = Tree(line)
+            # if section_found:
+                # iqtree_tree = Tree(line)
+                # break
 
-                break
+    # rooting subtree using reference subtree as template
+    ref_outgroup_leaves = ref_tree.get_children()[0].get_leaf_names()
 
-    # root iqtree randomly
-    iqtree.set_outgroup(iqtree.get_children()[0])
+    if len(ref_outgroup_leaves) == 1:
+        outgroup = ref_outgroup_leaves[0]
+    else:
+        outgroup = iqtree_tree.get_common_ancestor(*ref_outgroup_leaves)
 
-    if iqtree.robinson_foulds(ref_tree)[0] != 0:
-        fix_topology(iqtree)
+        if outgroup.is_root():
 
-    return iqtree
+            for leaf in iqtree_tree.get_leaf_names():
+
+                if leaf not in ref_outgroup_leaves:
+                    iqtree_tree.set_outgroup(leaf)
+                    outgroup = iqtree_tree.get_common_ancestor(*ref_outgroup_leaves)
+
+    iqtree_tree.set_outgroup(outgroup)
+
+
+    # # root iqtree randomly
+    # iqtree_tree.set_outgroup(iqtree_tree.get_children()[0])
+
+    # if iqtree.robinson_foulds(ref_tree)[0] != 0:
+    # fix_topology(iqtree_tree)
+
+    return iqtree_tree
 
 
 def calculate_weights(a_tree, b_tree):
@@ -449,25 +456,48 @@ def main(args):
         a_tree, b_tree = get_ref_subtrees(master_tree, defined_groups)
         a_leaves = a_tree.get_leaf_names()
 
+        # write subtrees into newick files
+        ## TODO: use
+        ## t.write(format=1, outfile="new_tree.nw")
+        ## instead
         with open("test_a.tree", "w") as a_tree_file:
             a_tree_file.write(a_tree.write())
 
         with open("test_b.tree", "w") as b_tree_file:
             b_tree_file.write(b_tree.write())
 
+        # split alignment into two subalignments
         write_alignment_partitions(alignment, a_tree, b_tree)
 
         # first iqtree execution
-        print("Running iqtree on subtree a...")
-        run_iqtree_a("test_a.tree", "test_a.aln", "test_subset1", model, cores)
-        print("Running iqtree on subtree b...")
-        run_iqtree_a("test_b.tree", "test_b.aln", "test_subset2", model, cores)
-        a_iqtree_file = "test_subset1.iqtree"
-        b_iqtree_file = "test_subset2.iqtree"
+        for subset in ['test_a','test_b']:
+
+            print(f"Running iqtree on subtree {subset}...")
+            iqtree_command = [
+                "iqtree2",
+                "-nt", cores,
+                "-s", f"{subset}.aln",
+                "-te", f"{subset}.tree",
+                "-m", f"LG+{model}+G",
+                "-mwopt",
+                "-prec", "10",
+                "--prefix", f"{subset}",
+                "--quiet"
+            ]
+            subprocess.run(iqtree_command)
+
+           
+        # # first iqtree execution
+        # print("Running iqtree on subtree a...")
+        # run_iqtree_a("test_a.tree", "test_a.aln", "test_subset1", model, cores)
+        # print("Running iqtree on subtree b...")
+        # run_iqtree_a("test_b.tree", "test_b.aln", "test_subset2", model, cores)
+        # a_iqtree_file = "test_subset1.iqtree"
+        # b_iqtree_file = "test_subset2.iqtree"
 
         # check if the new trees generated by iqtree have the same topology
-        a_tree = validate_iqtree_generated_tree(a_iqtree_file, a_tree)
-        b_tree = validate_iqtree_generated_tree(b_iqtree_file, b_tree)
+        a_tree = conform_iqtree_tree("test_a.iqtree", a_tree)
+        b_tree = conform_iqtree_tree("test_b.iqtree", b_tree)
 
         trees = []
         denominator = int(1 / float(args.increment))
@@ -501,11 +531,11 @@ def main(args):
         print(f"{len(trees)} tree were generated\n")
 
         a_weight, b_weight = calculate_weights(a_tree, b_tree)
-        avg_alpha = calculate_weighted_average_alpha(a_iqtree_file, b_iqtree_file, a_weight, b_weight)
+        avg_alpha = calculate_weighted_average_alpha("test_a.iqtree", "test_b.iqtree", a_weight, b_weight)
 
         if not nexus_address:
             avg_mixture_weights = calculate_weighted_average_mixture_weights(
-                a_iqtree_file, b_iqtree_file, a_weight, b_weight
+                "test_a.iqtree", "test_b.iqtree", a_weight, b_weight
             )
             # generate nexus file:
             nexus_address = write_nexus_file(avg_mixture_weights, model)
@@ -565,4 +595,5 @@ if __name__ == "__main__":
     # ]
 
     arguments = parser.parse_args()
+
     main(arguments)
