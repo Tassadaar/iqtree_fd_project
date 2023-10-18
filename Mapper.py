@@ -32,35 +32,34 @@ def validate_alignment(tree, alignment_file):
 
 def validate_def_file(tree, def_file):
     # store definition file in memory
-    # as a list of two lists of taxa
+    # as a list of two sets of taxa
+    # this ensures uniqueness, assuming that order does not matter with def files
     with open(def_file, "r") as file:
-        taxa_groups = [line.split() for line in file]
+        taxa_groups = [set(line.split()) for line in file]
 
     # check 1: definition file must have exactly two groups of taxa
     if len(taxa_groups) != 2:
         raise ValueError(f"Definition file does not have exactly two groups of taxa")
-    # IDEA: check if the two groups of taxa are non-overlapping. Is there a taxon in both groups?
 
-    # check 2: taxa in definition file must all be in the tree
-    all_taxa = taxa_groups[0] + taxa_groups[1]
+    # check 2: the two groups of taxa must be non-overlapping, i.e. is there a taxon in both groups?
+    set_intercept = taxa_groups[0] & taxa_groups[1]
 
-    # TODO: can this be simplified using sets maybe?
-    remainder_taxa = all_taxa.copy()
+    if set_intercept:
+        raise ValueError(f"Defined groups have overlapping items: {set_intercept}.")
 
-    for leaf in tree.get_leaf_names():
+    # check 3: leaves in the tree must all be in the definition file
+    all_taxa = taxa_groups[0] | taxa_groups[1]
+    leaves = set(tree.get_leaf_names())
+    unique_leaves = leaves - all_taxa
 
-        if leaf not in all_taxa:
-            raise ValueError(f"Tree leaf {leaf} does not exist in the definition file")
+    if unique_leaves:
+        raise ValueError(f"Some tree leaves do not exist in the definition file: {unique_leaves}.")
 
-        remainder_taxa.remove(leaf)
+    # check 4: are there any taxa in the definition file that do not exist in the tree file?
+    unique_taxa = all_taxa - leaves
 
-    # check 3: are there any taxa in the definition file that do not exist in the tree file?
-    if remainder_taxa:
-
-        if len(remainder_taxa) == 1:
-            raise ValueError(f"Taxon {{{remainder_taxa.pop()}}} in the definition file does not exist in the tree.")
-        else:
-            raise ValueError(f"Taxa {{{', '.join(remainder_taxa)}}} in the definition file do not exist in the tree.")
+    if unique_taxa:
+        raise ValueError(f"Some taxa do not exist in the tree: {unique_taxa}.")
 
     return taxa_groups
 
@@ -83,7 +82,6 @@ def get_ref_subtrees(master_tree, leaf_groups):
             master_tree.set_outgroup(common_ancestor)
             a_tree, b_tree = master_tree.get_children()
 
-    
     return a_tree, b_tree
 
 
@@ -589,14 +587,14 @@ if __name__ == "__main__":
     parser.add_argument("-nt", "--cores", required=False, default="2",
                         help="Number of CPU cores to use")
 
-    # # emulating commandline arguments for development
-    # sys.argv = [
-    #     "Mapper.py",
-    #     "-te", "data/Hector/TAB",
-    #     "-d", "data/Hector/def",
-    #     "-s", "data/Hector/conAB1rho60.fa",
-    #     "-i", "0.1"
-    # ]
+    # emulating commandline arguments for development
+    sys.argv = [
+        "Mapper.py",
+        "-te", "data/Hector/TAB",
+        "-d", "data/Hector/def",
+        "-s", "data/Hector/conAB1rho60.fa",
+        "-i", "0.1"
+    ]
 
     arguments = parser.parse_args()
 
