@@ -3,25 +3,29 @@ import sys
 import argparse
 import subprocess
 from itertools import product
-from ete3 import Tree, TreeStyle, TreeNode, NodeStyle
+from ete3 import Tree, TreeStyle, TreeNode
 from Bio import AlignIO
 
 
 def validate_alignment(tree, alignment_file):
-    '''
+    """
     Does the alignment have the exact same set of taxa
     as the tree?
-    '''
+    """
     # parsing fasta file
     alignment = AlignIO.read(alignment_file, "fasta")
     seq_ids = set(record.id for record in alignment)
-
-    # TODO: raise error if alignment contains non-unique taxa names
+    seen_taxa = set()
 
     for taxon in tree.get_leaf_names():
 
         if taxon not in seq_ids:
             raise ValueError(f"Tree taxon {taxon} does not exist in the alignment file")
+
+        if taxon in seen_taxa:
+            raise ValueError(f"Tree taxon {taxon} is duplicated in the alignment file")
+
+        seen_taxa.add(taxon)
 
     return alignment
 
@@ -46,7 +50,7 @@ def validate_def_file(tree, def_file):
     for leaf in tree.get_leaf_names():
 
         if leaf not in all_taxa:
-            raise ValueError(f"Tree taxon {taxon} does not exist in the definition file")
+            raise ValueError(f"Tree leaf {leaf} does not exist in the definition file")
 
         remainder_taxa.remove(leaf)
 
@@ -54,9 +58,9 @@ def validate_def_file(tree, def_file):
     if remainder_taxa:
 
         if len(remainder_taxa) == 1:
-            raise ValueError(f"Taxon {{{remainder_leaves.pop()}}} in the definition file does not exist in the tree.")
+            raise ValueError(f"Taxon {{{remainder_taxa.pop()}}} in the definition file does not exist in the tree.")
         else:
-            raise ValueError(f"Taxa {{{', '.join(remainder_leaves)}}} in the definition file do not exist in the tree.")
+            raise ValueError(f"Taxa {{{', '.join(remainder_taxa)}}} in the definition file do not exist in the tree.")
 
     return taxa_groups
 
