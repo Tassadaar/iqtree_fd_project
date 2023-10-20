@@ -402,11 +402,6 @@ def main(args):
 
     try:
         master_tree = Tree(args.tree)
-
-        # NOTE: is this absolutely necessary?
-        # master_tree.set_outgroup(master_tree.get_children()[0])  # the master tree needs to be rooted for ete3
-        # assert len(master_tree.get_children()) == 2, f"Master tree must be rooted!\n {master_tree}"
-
         # TODO: remove "redundant" variable names for arg arguments
         alignment_address = args.alignment
         alignment = validate_alignment(master_tree, alignment_address)
