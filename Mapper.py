@@ -109,23 +109,14 @@ def conform_iqtree_tree(iqtree_file, ref_tree):
 
     # extracting subtree from iqtree file
     iqtree_tree = None
+
     with open(iqtree_file, "r") as file:
-        # section_found = False
 
         for line in file:
 
             if "Tree in newick format:" in line:
                 next(file)
                 iqtree_tree = Tree(next(file))
-                # section_found = True
-                # continue
-
-            # if line == "\n":
-                # continue
-
-            # if section_found:
-                # iqtree_tree = Tree(line)
-                # break
 
     # rooting subtree using reference subtree as template
     ref_outgroup_leaves = ref_tree.get_children()[0].get_leaf_names()
@@ -144,13 +135,6 @@ def conform_iqtree_tree(iqtree_file, ref_tree):
                     outgroup = iqtree_tree.get_common_ancestor(*ref_outgroup_leaves)
 
     iqtree_tree.set_outgroup(outgroup)
-
-
-    # # root iqtree randomly
-    # iqtree_tree.set_outgroup(iqtree_tree.get_children()[0])
-
-    # if iqtree.robinson_foulds(ref_tree)[0] != 0:
-    # fix_topology(iqtree_tree)
 
     return iqtree_tree
 
