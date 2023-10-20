@@ -403,6 +403,8 @@ def main(args):
     try:
         master_tree = Tree(args.tree)
         # TODO: remove "redundant" variable names for arg arguments
+        #  NOTE: I would have to go against this again, implementing this caused a lot of error because you'd have to
+        #        change entry by entry. This potentially could mean a lot of headache if we change anything with args.
         alignment_address = args.alignment
         alignment = validate_alignment(master_tree, alignment_address)
         defined_groups = validate_def_file(master_tree, args.definition)
@@ -410,7 +412,6 @@ def main(args):
         nexus_address = args.nexus
         cores = args.cores
         a_tree, b_tree = get_ref_subtrees(master_tree, defined_groups)
-        a_leaves = a_tree.get_leaf_names()
 
         # write subtrees into newick files
         ## TODO: use
@@ -497,7 +498,7 @@ def main(args):
             nexus_address = write_nexus_file(avg_mixture_weights, model)
 
         # second iqtree execution
-        run_iqtree_b(trees, alignment_address, avg_alpha, model, nexus_address, cores, a_leaves)
+        run_iqtree_b(trees, alignment_address, avg_alpha, model, nexus_address, cores, a_tree.get_leaf_names())
 
         # To get the number of trees generated, we take number of proportions to the power of 2
         generate_summary(len(proportions) ** 2)
