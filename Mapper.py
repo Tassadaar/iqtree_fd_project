@@ -87,29 +87,23 @@ def get_ref_subtrees(master_tree, leaf_groups):
 
 def write_alignment_partitions(alignment, a_tree, b_tree):
     # TODO: use a_tree.get_leaf_names() directly, rather than storing it seperately
-    # TODO: use
-    ## AlignIO.write(my_records, "my_example.faa", "fasta")
-    ## to write alignment partition files
+    #  NOTE: we don't want to call the method every loop, so no
     a_leaves = a_tree.get_leaf_names()
     b_leaves = b_tree.get_leaf_names()
+    a_alignment = AlignIO.MultipleSeqAlignment([])
+    b_alignment = AlignIO.MultipleSeqAlignment([])
 
-    # write alignment for subtree a
-    with open("test_a.aln", "w") as a_aln_file:
-        
-        for record in alignment:
+    for record in alignment:
 
-            if record.id in a_leaves:
-                a_aln_file.write(f">{record.id}\n")
-                a_aln_file.write(f"{record.seq}\n")
+        if record.id in a_leaves:
+            a_alignment.append(record)
 
-    # write alignment for subtree b
-    with open("test_b.aln", "w") as b_aln_file:
+        if record.id in b_leaves:
+            b_alignment.append(record)
 
-        for record in alignment:
+    AlignIO.write(a_alignment, "test_a.aln", "fasta")
+    AlignIO.write(b_alignment, "test_b.aln", "fasta")
 
-            if record.id in b_leaves:
-                b_aln_file.write(f">{record.id}\n")
-                b_aln_file.write(f"{record.seq}\n")
 
 
 # DEPRECATED
