@@ -105,25 +105,6 @@ def write_alignment_partitions(alignment, a_tree, b_tree):
     AlignIO.write(b_alignment, "test_b.aln", "fasta")
 
 
-
-# DEPRECATED
-# def run_iqtree_a(tree_file, alignment_address, prefix, model, cores):
-
-#     iqtree_command = [
-#         "iqtree2",
-#         "-nt", cores,
-#         "-s", alignment_address,
-#         "-te", tree_file,
-#         "-m", f"LG+{model}+G",
-#         "-mwopt",
-#         "-prec", "10",
-#         "--prefix", prefix,
-#         "--quiet"
-#     ]
-
-#     subprocess.run(iqtree_command)
-
-
 def conform_iqtree_tree(iqtree_file, ref_tree):
 
     # extracting subtree from iqtree file
