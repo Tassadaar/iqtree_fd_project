@@ -42,10 +42,10 @@ def validate_def_file(tree, def_file):
         raise ValueError(f"Definition file does not have exactly two groups of taxa")
 
     # check 2: the two groups of taxa must be non-overlapping, i.e. is there a taxon in both groups?
-    set_intercept = taxa_groups[0] & taxa_groups[1]
+    set_intersect = taxa_groups[0] & taxa_groups[1]
 
-    if set_intercept:
-        raise ValueError(f"Defined groups have overlapping items: {set_intercept}.")
+    if set_intersect:
+        raise ValueError(f"Defined groups have overlapping items: {set_intersect}.")
 
     # check 3: leaves in the tree must all be in the definition file
     all_taxa = taxa_groups[0] | taxa_groups[1]
@@ -86,8 +86,6 @@ def get_ref_subtrees(master_tree, leaf_groups):
 
 
 def write_alignment_partitions(alignment, a_tree, b_tree):
-    # TODO: use a_tree.get_leaf_names() directly, rather than storing it seperately
-    #  NOTE: we don't want to call the method every loop, so no
     a_leaves = a_tree.get_leaf_names()
     b_leaves = b_tree.get_leaf_names()
     a_alignment = AlignIO.MultipleSeqAlignment([])
@@ -106,7 +104,8 @@ def write_alignment_partitions(alignment, a_tree, b_tree):
 
 
 def conform_iqtree_tree(iqtree_file, ref_tree):
-
+    # TODO: use .treefile instead of .iqtree file
+    # iqtree_tree = Tree('test_subset1.treefile')
     # extracting subtree from iqtree file
     iqtree_tree = None
 
@@ -121,20 +120,31 @@ def conform_iqtree_tree(iqtree_file, ref_tree):
     # rooting subtree using reference subtree as template
     ref_outgroup_leaves = ref_tree.get_children()[0].get_leaf_names()
 
+    # if outgroup is a single taxon
     if len(ref_outgroup_leaves) == 1:
-        outgroup = ref_outgroup_leaves[0]
-    else:
-        outgroup = iqtree_tree.get_common_ancestor(*ref_outgroup_leaves)
+        iqtree_tree.set_outgroup( ref_outgroup_leaves[0] )
+        return iqtree_tree
 
-        if outgroup.is_root():
+    # if outgroup is multiple taxa
+    outgroup_lca = iqtree_tree.get_common_ancestor(*ref_outgroup_leaves)
 
-            for leaf in iqtree_tree.get_leaf_names():
+    # if the lca of the ref tree outgroup taxa is
+    # the root of the new iqtree tree, 
+    # the ref outgroup taxa are not monophyletic
+    if outgroup_lca.is_root():
 
-                if leaf not in ref_outgroup_leaves:
-                    iqtree_tree.set_outgroup(leaf)
-                    outgroup = iqtree_tree.get_common_ancestor(*ref_outgroup_leaves)
+        for leaf in iqtree_tree.get_leaf_names():
 
-    iqtree_tree.set_outgroup(outgroup)
+            # we do an initial reroot here,
+            # to ensure that the ref outgroup taxa are monophyletic
+            if leaf not in ref_outgroup_leaves:
+                iqtree_tree.set_outgroup(leaf)
+                break
+
+    # now that they are monophyletic,
+    # we can reroot with the reference outgroup taxa
+    new_outgroup_lca = iqtree_tree.get_common_ancestor(*ref_outgroup_leaves)
+    iqtree_tree.set_outgroup(new_outgroup_lca)
 
     return iqtree_tree
 
@@ -147,6 +157,7 @@ def calculate_weights(a_tree, b_tree):
     return a_taxa_count / total_taxa_count, b_taxa_count / total_taxa_count
 
 
+# TODO: rename a_log_file to iqtree files
 def calculate_weighted_average_mixture_weights(a_log_file, b_log_file, a_weight, b_weight):
 
     # get weights from iqtree log file, returns empty set if not found
@@ -156,6 +167,8 @@ def calculate_weighted_average_mixture_weights(a_log_file, b_log_file, a_weight,
         if not os.path.isfile(iqtree_file):
             raise FileNotFoundError(f"'{iqtree_file}' does not exist!")
 
+        # TODO: use next()
+        # while next line is not newline or something like that
         with open(iqtree_file, "r") as file:
             section_found = False
 
@@ -180,12 +193,17 @@ def calculate_weighted_average_mixture_weights(a_log_file, b_log_file, a_weight,
     a_mixture_weights = get_mixture_weights(a_log_file)
     b_mixture_weights = get_mixture_weights(b_log_file)
 
+    # usefulness of these safetynets questionable,
+    # but doesn't hurt
     if not a_mixture_weights:
         raise ValueError(f"Cannot extract weights, check if '{a_log_file}' is formatted correctly!")
 
     if not b_mixture_weights:
         raise ValueError(f"Cannot extract weights, check if '{a_log_file}' is formatted correctly!")
 
+    # mixture_weight = weight of the mixture model class
+    # weight = weight used to calculate the weighted average
+    # TODO: try to improve readability here. Maybe split up into multiple actions?
     avg_mixture_weights = {
         key: a_mixture_weight * a_weight + b_mixture_weights[key] * b_weight
         for key, a_mixture_weight in a_mixture_weights.items()
@@ -228,10 +246,10 @@ def calculate_weighted_average_alpha(a_log_file, b_log_file, a_weight, b_weight)
 
 
 def write_nexus_file(weights, model):
-    file_name = "test_nex.nex"
     out_freqs = []
 
     # generate frequency section
+    # TODO: use next strategy instead of section_found
     with open("data/modelmixtureCAT.nex", "r") as models:
         section_found = False
 
@@ -252,6 +270,9 @@ def write_nexus_file(weights, model):
                 out_freqs.append(words)
 
     # generate model section
+    # TODO: instead of using last category stuff,
+    # generate list
+    # and do ','.join(list) and append a }; at the end
     weight_line = f"model fundi_{model} = FMIX{{"
     last_category = list(weights.keys())[-1]
 
@@ -263,7 +284,7 @@ def write_nexus_file(weights, model):
             weight_line += f"fundi_{model}pi{category}:1:{weight}" + "};"
 
     # write to file
-    with open(file_name, "w") as nex_file:
+    with open('test_nex.nex', "w") as nex_file:
         nex_file.write("#nexus\nbegin models;\n")
 
         for line in out_freqs:
@@ -273,7 +294,7 @@ def write_nexus_file(weights, model):
 
         nex_file.write("end;")
 
-    return file_name
+    return 'test_nex.nex'
 
 
 def run_iqtree(trees, alignment_address, avg_alpha, model, nexus_file, cores, leaves):
@@ -399,7 +420,6 @@ def generate_summary(tree_count):
 
 
 def main(args):
-
     try:
         master_tree = Tree(args.tree)
         # TODO: remove "redundant" variable names for arg arguments
@@ -438,6 +458,7 @@ def main(args):
             subprocess.run(iqtree_command)
 
         # check if the new trees generated by iqtree have the same topology
+        # TODO: use .treefile instead of .iqtree
         a_tree = conform_iqtree_tree("test_a.iqtree", a_tree)
         b_tree = conform_iqtree_tree("test_b.iqtree", b_tree)
 
@@ -475,6 +496,7 @@ def main(args):
         a_weight, b_weight = calculate_weights(a_tree, b_tree)
         avg_alpha = calculate_weighted_average_alpha("test_a.iqtree", "test_b.iqtree", a_weight, b_weight)
 
+        # NOTE: discuss purpose of custom nexus file with Hector
         if not nexus_address:
             avg_mixture_weights = calculate_weighted_average_mixture_weights(
                 "test_a.iqtree", "test_b.iqtree", a_weight, b_weight
