@@ -195,7 +195,7 @@ def calculate_weighted_average_mixture_weights(a_iqtree_file, b_iqtree_file, a_w
     return avg_mixture_weights
 
 
-def calculate_weighted_average_alpha(a_log_file, b_log_file, a_weight, b_weight):
+def calculate_weighted_average_alpha(a_iqtree_file, b_iqtree_file, a_weight, b_weight):
 
     # get alpha from iqtree log file, returns None if not found
     def get_alpha(iqtree_file):
@@ -216,14 +216,14 @@ def calculate_weighted_average_alpha(a_log_file, b_log_file, a_weight, b_weight)
 
         return alpha
 
-    a_alpha = get_alpha(a_log_file)
-    b_alpha = get_alpha(b_log_file)
+    a_alpha = get_alpha(a_iqtree_file)
+    b_alpha = get_alpha(b_iqtree_file)
 
     if not a_alpha:
-        raise ValueError(f"Cannot extract weights, check if '{a_log_file}' is formatted correctly!")
+        raise ValueError(f"Cannot extract weights, check if '{a_iqtree_file}' is formatted correctly!")
 
     if not b_alpha:
-        raise ValueError(f"Cannot extract weights, check if '{a_log_file}' is formatted correctly!")
+        raise ValueError(f"Cannot extract weights, check if '{a_iqtree_file}' is formatted correctly!")
 
     return a_alpha * a_weight + b_alpha * b_weight
 
