@@ -2,7 +2,7 @@ import os
 import sys
 import argparse
 import subprocess
-from itertools
+import itertools
 from ete3 import Tree, TreeStyle, TreeNode
 from Bio import AlignIO
 
@@ -270,7 +270,6 @@ def write_nexus_file(weights, model):
 
 
 def run_iqtrees(trees, alignment_address, avg_alpha, model, nexus_file, cores, leaves):
-    # commands = []
     total_tree_count = len(trees)
 
     i = 1
@@ -278,15 +277,12 @@ def run_iqtrees(trees, alignment_address, avg_alpha, model, nexus_file, cores, l
 
         # render image of stitched-together-tree
         tree.render(f"test_{i}.png")
-
-        # TODO: use ete3 to write newick file
-        with open(f"test_{i}.tree", "w") as tree_file:
-            tree_file.write(tree.write())
+        tree.write(format=1, outfile=f"test_{i}.tree")
 
         iqtree_cmd = [
             "iqtree2",
             "-s", alignment_address,
-            "--tree-fix", tree_file.name,
+            "--tree-fix", f"test_{i}.tree",
             "-m", f"LG+fundi_{model}+G{{{avg_alpha}}}",
             "--mdef", nexus_file,
             "-nt", cores,
@@ -300,12 +296,7 @@ def run_iqtrees(trees, alignment_address, avg_alpha, model, nexus_file, cores, l
 
         print(f"Running iqtree funDi on Tree {i} out of {total_tree_count}...")
         subprocess.run(iqtree_cmd)
-
-        # commands.append(iqtree_cmd)
         i += 1
-
-    # second iqtree run
-    # for command in commands:
 
 
 def generate_summary(tree_count):
