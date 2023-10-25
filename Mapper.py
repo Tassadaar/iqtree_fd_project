@@ -147,8 +147,7 @@ def calculate_weights(a_tree, b_tree):
     return a_taxa_count / total_taxa_count, b_taxa_count / total_taxa_count
 
 
-# TODO: rename a_log_file to iqtree files
-def calculate_weighted_average_mixture_weights(a_log_file, b_log_file, a_weight, b_weight):
+def calculate_weighted_average_mixture_weights(a_iqtree_file, b_iqtree_file, a_weight, b_weight):
 
     # get weights from iqtree log file, returns empty set if not found
     def get_mixture_weights(iqtree_file):
@@ -157,47 +156,41 @@ def calculate_weighted_average_mixture_weights(a_log_file, b_log_file, a_weight,
         if not os.path.isfile(iqtree_file):
             raise FileNotFoundError(f"'{iqtree_file}' does not exist!")
 
-        # TODO: use next()
-        # while next line is not newline or something like that
         with open(iqtree_file, "r") as file:
-            section_found = False
 
             for line in file:
-
+                
                 if "No  Component      Rate    Weight   Parameters" in line:
-                    section_found = True
-                    continue
+                    next_line = next(file)
 
-                if line == "\n":
-                    section_found = False
+                    while next_line != "\n":
+                        words = next_line.split()
+                        mixture_weights[words[0]] = float(words[3])
+                        next_line = next(file)
 
-                if section_found:
-                    words = line.split()
-                    mixture_weights[words[0]] = float(words[3])
-
-                if "Gamma shape alpha:" in line:
                     break
 
         return mixture_weights
 
-    a_mixture_weights = get_mixture_weights(a_log_file)
-    b_mixture_weights = get_mixture_weights(b_log_file)
+    a_mixture_weights = get_mixture_weights(a_iqtree_file)
+    b_mixture_weights = get_mixture_weights(b_iqtree_file)
 
-    # usefulness of these safetynets questionable,
+    # usefulness of these safety nets questionable,
     # but doesn't hurt
     if not a_mixture_weights:
-        raise ValueError(f"Cannot extract weights, check if '{a_log_file}' is formatted correctly!")
+        raise ValueError(f"Cannot extract weights, check if '{a_iqtree_file}' is formatted correctly!")
 
     if not b_mixture_weights:
-        raise ValueError(f"Cannot extract weights, check if '{a_log_file}' is formatted correctly!")
+        raise ValueError(f"Cannot extract weights, check if '{a_iqtree_file}' is formatted correctly!")
 
     # mixture_weight = weight of the mixture model class
     # weight = weight used to calculate the weighted average
-    # TODO: try to improve readability here. Maybe split up into multiple actions?
-    avg_mixture_weights = {
-        key: a_mixture_weight * a_weight + b_mixture_weights[key] * b_weight
-        for key, a_mixture_weight in a_mixture_weights.items()
-    }
+    avg_mixture_weights = {}
+
+    # a_mixture_weights and b_mixture_weights have the same keys
+    for key, a_mixture_weight in a_mixture_weights.items():
+        weighted_avg_weight = a_mixture_weight * a_weight + b_mixture_weights[key] * b_weight
+        avg_mixture_weights[key] = weighted_avg_weight
 
     return avg_mixture_weights
 
