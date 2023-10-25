@@ -232,39 +232,28 @@ def write_nexus_file(weights, model):
     out_freqs = []
 
     # generate frequency section
-    # TODO: use next strategy instead of section_found
     with open("data/modelmixtureCAT.nex", "r") as models:
-        section_found = False
 
         for line in models:
 
             if f"CAT-{model} profile mixture model" in line:
-                section_found = True
-                continue
+                next_line = next(models)
 
-            if section_found:
+                while next_line != "\n":
+                    words = next_line.split()
+                    words[1] = f"fundi_{words[1]}"
+                    out_freqs.append(words)
+                    next_line = next(models)
 
-                # the section ends if blank line is encountered
-                if line == "\n":
-                    break
-
-                words = line.split()
-                words[1] = f"fundi_{words[1]}"
-                out_freqs.append(words)
+                break
 
     # generate model section
-    # TODO: instead of using last category stuff,
-    # generate list
-    # and do ','.join(list) and append a }; at the end
-    weight_line = f"model fundi_{model} = FMIX{{"
-    last_category = list(weights.keys())[-1]
+    weight_statements = []
 
     for category, weight in weights.items():
+        weight_statements.append(f"fundi_{model}pi{category}:1:{weight}")
 
-        if category != last_category:
-            weight_line += f"fundi_{model}pi{category}:1:{weight},"
-        else:
-            weight_line += f"fundi_{model}pi{category}:1:{weight}" + "};"
+    weight_line = f"model fundi_{model} = FMIX{{{','.join(weight_statements)}}};"
 
     # write to file
     with open('test_nex.nex', "w") as nex_file:
