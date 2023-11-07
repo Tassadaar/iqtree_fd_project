@@ -3,6 +3,7 @@ import sys
 import argparse
 import subprocess
 import itertools
+import re
 from ete3 import Tree, TreeStyle, TreeNode
 from Bio import AlignIO
 
@@ -34,8 +35,13 @@ def validate_def_file(tree, def_file):
     # store definition file in memory
     # as a list of two sets of taxa
     # this ensures uniqueness, assuming that order does not matter with def files
-    with open(def_file, "r") as file:
-        taxa_groups = [set(line.split(",")) for line in file]
+    with open(def_file, "r", newline="") as file:
+        taxa_groups = []
+
+        for line in file:
+            clean_line = line.rstrip(" ,\n")  # strip trailing whitespaces, commas or newline characters
+            taxon_group = set(re.split(r"[,\s]+", clean_line))  # parse clean line delimited by comma or whitespace
+            taxa_groups.append(taxon for taxon in taxon_group if taxon)  # remove empty strings
 
     # check 1: definition file must have exactly two groups of taxa
     if len(taxa_groups) != 2:
@@ -529,7 +535,7 @@ if __name__ == "__main__":
         "-d", "data/Kelsey/baldauf_archaea_all.csv",
         "-s", "data/Kelsey/supermatrix_loci_183.fasta",
         "-i", "0.1",
-	"-nt", "20" 
+        "-nt", "20"
     ]
 
     arguments = parser.parse_args()
