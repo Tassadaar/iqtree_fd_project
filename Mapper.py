@@ -304,12 +304,7 @@ def generate_summary(tree_count):
     # get tree_properties
     tree_properties = {}
 
-    # TODO: 
-    # loop like
-    # for i in range(tree_count):
-    # 1-based-index so no
-    i = 1
-    while i <= tree_count:
+    for i in range(1, tree_count + 1):
 
         # TODO: read up on tuples
         # a list of three tree_properties, fundi log-likelihood, rho value and central branch length
@@ -335,7 +330,6 @@ def generate_summary(tree_count):
                     break
 
         tree_properties[i] = attribute
-        i += 1
 
     # get the best tree based on funDi log-likelihood
     # TODO: this could be simpler
