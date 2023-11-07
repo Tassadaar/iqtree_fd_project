@@ -399,9 +399,6 @@ def generate_summary(tree_count):
 def main(args):
     try:
         master_tree = Tree(args.tree)
-        # TODO: remove "redundant" variable names for arg arguments
-        #  NOTE: I would have to go against this again, implementing this caused a lot of error because you'd have to
-        #        change entry by entry. This potentially could mean a lot of headache if we change anything with args.
         alignment_address = args.alignment
         alignment = validate_alignment(master_tree, alignment_address)
         defined_groups = validate_def_file(master_tree, args.definition)
