@@ -282,7 +282,7 @@ def run_iqtrees(trees, alignment_address, avg_alpha, model, nexus_file, cores, l
     for tree in trees:
 
         # render image of stitched-together-tree
-        tree.render(f"test_{i}.png")
+        # tree.render(f"test_{i}.png") not supported on perun
         tree.write(format=1, outfile=f"test_{i}.tree")
 
         iqtree_cmd = [
@@ -374,7 +374,7 @@ def generate_summary(tree_count):
             # TODO: try empty strings
             node.name = "node"
 
-    best_tree.render(file_name=f"test_{best_tree_index}.png", tree_style=tree_style, units="px", w=800, h=1000)
+    # best_tree.render(file_name=f"test_{best_tree_index}.png", tree_style=tree_style, units="px", w=800, h=1000)
     # TODO: root the best_tree, reference tree outgroup
 
     # print to summary file
@@ -391,7 +391,7 @@ def generate_summary(tree_count):
         # print tree with branch lengths
         # TODO: look into documentation of .get_ascii function
         summary_file.write(f"{best_tree.get_ascii(attributes=['name', 'dist'], show_internal=True)}\n\n")
-        summary_file.write(f"See \"test_{best_tree_index}.png\" for a tree illustration.\n\n")
+        # summary_file.write(f"See \"test_{best_tree_index}.png\" for a tree illustration.\n\n")
 
         # TODO: sort trees by log likelihood
         for tree, attribute in tree_properties.items():
