@@ -41,7 +41,7 @@ def validate_def_file(tree, def_file):
         for line in file:
             clean_line = line.rstrip(" ,\n")  # strip trailing whitespaces, commas or newline characters
             taxon_group = set(re.split(r"[,\s]+", clean_line))  # parse clean line delimited by comma or whitespace
-            taxa_groups.append(taxon for taxon in taxon_group if taxon)  # remove empty strings
+            taxa_groups.append(set(taxon for taxon in taxon_group if taxon))  # remove empty strings
 
     # check 1: definition file must have exactly two groups of taxa
     if len(taxa_groups) != 2:
@@ -421,7 +421,7 @@ def main(args):
         write_alignment_partitions(alignment, a_tree, b_tree)
 
         # first iqtree execution
-        for subset in ['test_a','test_b']:
+        for subset in ["test_a", "test_b"]:
 
             print(f"Running iqtree on subtree {subset}...")
             iqtree_command = [
