@@ -35,7 +35,7 @@ def validate_def_file(tree, def_file):
     # as a list of two sets of taxa
     # this ensures uniqueness, assuming that order does not matter with def files
     with open(def_file, "r") as file:
-        taxa_groups = [set(line.split()) for line in file]
+        taxa_groups = [set(line.split(",")) for line in file]
 
     # check 1: definition file must have exactly two groups of taxa
     if len(taxa_groups) != 2:
@@ -525,10 +525,11 @@ if __name__ == "__main__":
     # emulating commandline arguments for development
     sys.argv = [
         "Mapper.py",
-        "-te", "data/Hector/TAB",
-        "-d", "data/Hector/def",
-        "-s", "data/Hector/conAB1rho60.fa",
-        "-i", "0.3"
+        "-te", "data/Kelsey/c60.treefile",
+        "-d", "data/Kelsey/baldauf_archaea_all.csv",
+        "-s", "data/Kelsey/supermatrix_loci_183.fasta",
+        "-i", "0.1",
+	"-nt", "20" 
     ]
 
     arguments = parser.parse_args()

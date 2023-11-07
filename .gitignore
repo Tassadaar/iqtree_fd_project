@@ -8,3 +8,5 @@ ModifiedC10NexusWith0.1Weights.txt
 .DS_Store
 test_*
 joran*
+*.sh
+*.sh.*
