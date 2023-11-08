@@ -1,0 +1,457 @@
+Tree 45 has the largest funDi log-likelihood of -6394912.395.
+rho: 0.486.
+Central branch length: 0.493
+
+         /-am-AM_Acytostelium_subglobosum, 0.0933321
+        |
+        |                                                          /-am-AM_Cavostelium_apophysatum, 0.293321
+        |                                            /node, 0.096483
+        |                                           |             |               /-am-AM_Filamoeba_nolandi, 0.258699
+        |                                           |              \node, 0.0435289
+        |                                           |                             \-am-AM_Protostelium_nocturnum, 0.337761
+        |                                           |
+        |                                           |                                           /-am-AM_Copromyxa_protea, 0.388451
+        |                                           |                             /node, 0.171746
+        |                                           |                            |              \-am-AM_Cryptodifflugia_operculata, 0.326482
+        |                                           |               /node, 0.115276
+        |                                           |              |             |               /-am-AM_Echinamoeba_exudans, 0.398666
+        |                                           |              |              \node, 0.0405915
+        |                                           |              |                             \-am-AM_Vermamoeba_vermiformis, 0.341726
+        |                                           |              |
+        |                                           |              |                                                                         /-am-FU_Allomyces_macrogynus, 0.154099
+        |                                           |              |                                                           /node, 0.272486
+        |                                           |              |                                                          |              \-am-FU_Catenaria_anguillulae, 0.195241
+        |                                           |              |                                                          |
+        |                                           |              |                                                          |                                            /-am-FU_Aspergillus_aculeatus, 0.0580384
+        |                                           |              |                                                          |                              /node, 0.434393
+        |                                           |              |                                            /node, 0.0192513                            |              \-am-FU_Aspergillus_nidulans, 0.0549264
+        |                                           |              |                                           |              |               /node, 0.0780029
+        |                                           |              |                                           |              |              |              |                            /-am-FU_Laccaria_bicolor, 0.090283
+        |                                           |              |                                           |              |              |              |              /node, 0.193637
+        |                                           |              |                                           |              |              |               \node, 0.113569             \-am-FU_Moniliophthora_roreri, 0.0920349
+        |                                           |              |                                           |               \node, 0.0388509                           |
+        |                                           |              |                                           |                             |                             \-am-FU_Ustilago_maydis, 0.304384
+        |                                           |              |                                           |                             |
+        |                                           |              |                              /node, 0.148656                            |               /-am-FU_Mortierella_elongata, 0.229539
+        |                                           |              |                             |             |                              \node, 0.0382316
+        |                                           |              |                             |             |                                             \-am-FU_Rhizophagus_irregularis, 0.243946
+        |                                           |              |                             |             |
+        |                                           |              |                             |             |                                             /-am-FU_Batrachochytrium_dendrobatidis, 0.245755
+        |                                           |              |                             |             |                              /node, 0.0412813
+        |                                           |              |                             |             |               /node, 0.0578945              \-am-FU_Spizellomyces_punctatus, 0.153816
+        |                                           |              |                             |             |              |              |
+        |                                           |              |                             |              \node, 0.0455727              \-am-FU_Rhizoclosmatium_globosum, 0.303613
+        |                                           |              |                             |                            |
+        |                                           |              |                             |                             \-am-FU_Gonapodya_prolifera, 0.397881
+        |                                           |              |                             |
+        |                             /node, 0.0849076             |                             |                                           /-am-HO_Acanthoecalike_sp, 0.425233
+        |                            |              |              |                             |                              /node, 0.11641
+        |                            |              |              |               /node, 0.0673262                            |            |              /-am-HO_Monosiga_brevicollis, 0.302841
+        |                            |              |              |              |              |                             |             \node, 0.125684
+        |                            |              |              |              |              |                             |                           \-am-HO_Salpingoeca_rosetta, 0.33551
+        |                            |              |              |              |              |                             |
+        |                            |              |              |              |              |                             |                                                                          /-am-HO_Apis_mellifera, 0.295447
+        |                            |              |              |              |              |                             |                                                           /node, 0.0566828
+        |                            |              |              |              |              |                             |                                             /node, 0.034572              \-am-HO_Stegodyphus_mimosarum, 0.258666
+        |                            |              |              |              |              |               /node, 0.0377702                                           |             |
+        |                            |              |              |              |              |              |              |                              /node, 0.0409688             \-am-HO_Priapulus_caudatus, 0.257181
+        |                            |              |              |              |              |              |              |                             |              |
+        |                            |              |              |              |              |              |              |                             |              |               /-am-HO_Branchiostoma_floridae, 0.214391
+        |                            |              |              |              |              |              |              |                             |               \node, 0.0310358
+        |                            |              |              |              |              |              |              |               /node, 0.0258085                             \-am-HO_Danio_rerio, 0.205197
+        |                            |              |              |              |              |              |              |              |              |
+        |                            |              |              |              |               \node, 0.0599492             |              |              |                              /-am-HO_Exaiptasia_pallida, 0.109371
+        |                            |              |              |              |                             |              |              |              |               /node, 0.0954159
+        |                            |              |              |              |                             |               \node, 0.0982591              \node, 0.0415803              \-am-HO_Nematostella_vectensis, 0.0889254
+        |                            |              |              |              |                             |                             |                             |
+        |                            |              |              |              |                             |                             |                              \-am-HO_Hydra_vulgaris, 0.306626
+        |                            |              |              |              |                             |                             |
+        |                            |              |              |              |                             |                              \-am-HO_Trichoplax_adhaerens, 0.316739
+        |                            |              |              |              |                             |
+        |                            |              |              |              |                              \-am-HO_Capsaspora_owczarzaki, 0.398649
+        |                            |              |              |              |
+        |                            |              |              |              |                                                                                                                         /-ar-AS_Heimdallarchaeota_AB125, 1.10533
+        |                            |              |              |              |                                                                                                           /node, 0.169724
+        |                            |              |              |              |                                                                                                          |              \-ar-AS_Heimdallarchaeota_B3Heim, 1.1991
+        |                            |              |              |              |                                                                                                          |
+        |                            |              |              |              |                                                                                                          |                            /-ar-AS_Lokiarchaeota_archaeon_CR4, 0.690815
+        |                            |              |              |              |                                                                                            /node, 0.0778581                          |
+        |                            |              |              |              |                                                                                           |              |              /node, 0.417912                          /-ar-AS_Lokiarchaeota_archaeon_Lokib32, 0.22178
+        |                            |              |              |              |                                                                                           |              |             |             |              /node, 0.54481
+        |                            |              |              |              |                                                                                           |              |             |              \node, 0.107183            \-ar-AS_Lokiarchaeum_sp, 0.165211
+        |                            |              |              |              |                                                                                           |               \node, 0.105909                          |
+        |                            |              |              |              |                                                                                           |                            |                            \-ar-AS_Prometheoarchaeum_syntrophicum, 0.738687
+        |                            |              |              |              |                                                                                           |                            |
+        |                            |              |              |              |                                                                                           |                             \-ar-AS_Thorarchaeota_SMTZ, 1.07464
+        |                            |               \node, 0.0375842             |                                                                                           |
+        |                            |                             |              |                                                                                           |                                                                                        /-ar-EU_Archaeoglobus_fulgidus, 0.218106
+        |                            |                             |              |                                                                                           |                                                                          /node, 0.442468
+        |                            |                             |              |                                                                                           |                                                                         |             |              /-ar-EU_Ferroglobus_placidus, 0.196264
+        |                            |                             |              |                                                                                           |                                                                         |              \node, 0.157916
+        |                            |                             |              |                                                                                           |                                                                         |                            \-ar-EU_Geoglobus_ahangari, 0.220612
+        |                            |                             |              |                                                                                           |                                                           /node, 0.0983091
+        |                            |                             |              |                                                                                           |                                                          |              |                                            /-ar-EU_Methanocella_paludicola, 0.566242
+        |                            |                             |              |                                                                                           |                                                          |              |                              /node, 0.059982
+        |                            |                             |              |                                                                                           |                                                          |              |               /node, 0.0862987             \-ar-EU_Methanothrix_soehngenii, 0.705245
+        |                            |                             |              |                                                                                           |                                                          |              |              |              |
+        |                            |                             |              |                                                                                           |                                                          |               \node, 0.0580226              \-ar-EU_Methanoplanus_limicola, 0.803081
+        |                            |                             |              |                                                                                           |                                            /node, 0.0765261                            |
+        |                            |                             |              |                                                                                           |                                           |              |                              \-ar-EU_Methanonatronarchaeum_thermophilum, 1.02234
+        |                            |                             |              |                                                                                           |                                           |              |
+        |                            |                             |              |                                                                                           |                                           |              |                            /-ar-TH_Aciduliprofundum_boonei_T469, 0.527585
+        |                            |                             |              |                                                                                           |                                           |              |              /node, 0.196707
+        |                            |                             |              |                                                                                           |                                           |              |             |              \-ar-TH_Thermoplasma_volcanium, 1.04198
+        |                            |                             |              |                                                                                           |                                           |               \node, 0.240538
+        |                            |                             |              |                                                                          /node, 0.4927012685                                          |                            |              /-ar-TH_Methanomassiliicoccus_luminyensis, 0.377142
+        |                            |                             |              |                                                                         |                 |                                           |                             \node, 0.319696
+        |                            |                             |              |                                                                         |                 |                                           |                                          |              /-ar-TH_Methanomethylophilus_alvus, 0.289617
+        |                            |                             |              |                                                                         |                 |                                           |                                           \node, 0.386908
+        |                            |                             |              |                                                                         |                 |                             /node, 0.0788301                                                        \-ar-TH_Methanoplasma_termitum, 0.208537
+        |                            |                             |              |                                                                         |                 |                            |              |
+        |                            |                             |              |                                                                         |                 |                            |              |                                                           /-ar-EU_Methanobacterium_subterraneum, 0.19995
+        |                            |                             |              |                                                                         |                 |                            |              |                                            /node, 0.0574334
+        |                            |                             |              |                                                                         |                 |                            |              |                                           |              |               /-ar-EU_Methanobrevibacter_cuticularis, 0.267679
+        |                            |                             |              |                                                                         |                 |                            |              |                              /node, 0.468494              \node, 0.0598769
+        |                            |                             |              |                                                                         |                 |                            |              |                             |             |                              \-ar-EU_Methanothermobacter_marburgensis, 0.267544
+        |                            |                             |              |                                                                         |                 |                            |              |                             |             |
+        |                            |                             |              |                                                                         |                 |               /node, 0.112319             |               /node, 0.0795345             \-ar-EU_Methanosphaera_stadtmanae, 0.385309
+        |                            |                             |              |                                                                         |                 |              |             |              |              |              |
+        |                            |                             |              |                                                                         |                 |              |             |              |              |              |              /-ar-EU_Methanocaldococcus_bathoardescens, 0.264205
+        |                            |                             |              |                                                                         |                 |              |             |               \node, 0.0414223              \node, 0.479715
+        |                            |                             |              |                                                                         |                 |              |             |                             |                             \-ar-EU_Methanococcus_vannielii, 0.393909
+        |                            |                             |              |                                                                         |                 |              |             |                             |
+        |                            |                             |              |                                                                         |                 |              |             |                              \-ar-HY_Hydrothermarchaeota_archaeon, 0.854705
+        |                            |                             |              |                                                                         |                 |              |             |
+        |                            |                             |              |                                                                         |                 |              |              \-ar-EU_Pyrococcus_furiosus, 0.721924
+        |                            |                             |              |                                                                         |                 |              |
+        |                            |                             |              |                                                                         |                 |              |                                                                                                    /-ar-TC_Acidianus_hospitalis, 0.173858
+        |                            |                             |              |                                                                         |                 |              |                                                                                      /node, 0.100615
+        |                            |                             |              |                                                                         |                 |              |                                                                                     |              \-ar-TC_Metallosphaera_yellowstonensis, 0.304124
+        |                            |                             |              |                                                                         |                 |              |                                                                       /node, 0.0790873
+        |                            |                             |              |                                                                         |                 |              |                                                                      |              |               /-ar-TC_Saccharolobus_solfataricus, 0.276266
+        |                            |                             |              |                                                                         |                 |              |                                                         /node, 0.501887              \node, 0.0445091
+        |                            |                             |              |                                                            /node, 0.100933                 \node, 0.0778581                                                       |             |                              \-ar-TC_Stygiolobus_azoricus, 0.28939
+        |                            |                             |              |                                                           |             |                                |                                                        |             |
+        |                            |                             |              |                                                           |             |                                |                                           /node, 0.170077             \-ar-TC_Sulfodiicoccus_acidiphilus, 0.512725
+        |                            |                             |              |                                                           |             |                                |                                          |             |
+        |                            |                             |              |                                                           |             |                                |                                          |             |              /-ar-TC_Ignicoccus_hospitalis, 0.757348
+        |                            |                             |              |                                                           |             |                                |                                          |             |             |
+        |                            |                             |              |                                                           |             |                                |                                          |              \node, 0.186426                           /-ar-TC_Pyrodictium_sp, 0.345596
+        |                            |                             |              |                                                           |             |                                |                                          |                           |               /node, 0.22197
+        |                            |                             |              |                                                           |             |                                |                             /node, 0.109348                           \node, 0.0700608            \-ar-TC_Pyrolobus_fumarii, 0.294831
+        |                            |                             |              |                                                           |             |                                |                            |             |                                          |
+        |                            |                             |              |                                                           |             |                                |                            |             |                                           \-ar-TC_Staphylothermus_marinus, 0.655475
+        |                            |                             |              |                                                           |             |                                |                            |             |
+        |                            |                             |              |                                                           |             |                                |                            |             |                            /-ar-TC_Infirmifilum_lucidum, 0.271026
+        |                            |                             |              |                                                           |             |                                |               /node, 0.117685            |              /node, 0.591767
+        |                            |                             |              |                                                           |             |                                |              |             |              \node, 0.222436             \-ar-TC_Thermofilum_pendens, 0.208038
+        |                            |                             |              |                                                           |             |                                |              |             |                           |
+        |                            |                             |              |                                                           |             |                                 \node, 0.0918041            |                            \-ar-TC_Pyrobaculum_sp, 1.10128
+        |                            |                             |              |                                                           |             |                                               |             |
+        |                            |                             |              |                                                           |             |                                               |              \-ar-TC_Marsarchaeota_BED, 1.43446
+        |                            |                             |              |                                                           |             |                                               |
+        |                            |                             |              |                                                           |             |                                                \-ar-TC_Korarchaeota_archaeon, 1.25379
+        |                            |                             |              |                                             /node, 0.0794554            |
+        |                            |                             |              |                                            |              |             |                                                         /-xm-PB_Dientamoeba_fragilis, 0.145122
+        |                            |                              \node, 0.0498123                                           |              |             |                                           /node, 0.114547
+        |                            |                                            |                                            |              |             |                             /node, 0.102489             \-xm-PB_Histomonas_meleagridis, 0.168734
+        |                            |                                            |                                            |              |             |                            |             |
+        |                            |                                            |                                            |              |             |              /node, 0.0553816             \-xm-PB_Tritrichomonas_foetus, 0.213621
+        |                            |                                            |                                            |              |             |             |              |
+        |                            |                                            |                                            |              |              \node, 0.908398              \-xm-PB_Trichomitus_batrachorum, 0.384257
+        |                            |                                            |                                            |              |                           |
+        |                            |                                            |                                            |              |                           |              /-xm-PB_Pentatrichomonas_hominis, 0.203288
+        |                            |                                            |                                            |              |                            \node, 0.158991
+        |                            |                                            |                                            |              |                                         |              /-xm-PB_Trichomonas_gallinae, 0.0267637
+        |                            |                                            |                                            |              |                                          \node, 0.223414
+        |                            |                                            |                                            |              |                                                        \-xm-PB_Trichomonas_tenax, 0.0406444
+        |                            |                                            |                                            |              |
+        |                            |                                            |                                            |              |                            /-xm-FR_Carpediemonas_likeNY0171, 1.25206
+        |                            |                                            |                                            |              |                           |
+        |                            |                                            |                              /node, 0.0509203             |              /node, 0.103985             /-xm-FR_Chilomastix_sp, 1.04398
+        |                            |                                            |                             |              |              |             |             |             |
+        |                            |                                            |                             |              |              |             |              \node, 0.142109                            /-xm-FR_Dysnectes_brevis, 0.789772
+        |                            |                                            |                             |              |              |             |                           |               /node, 0.253112
+        |                            |                                            |                             |              |              |             |                           |              |             |              /-xm-FR_Giardia_muris, 1.12386
+        |                            |                                            |                             |              |               \node, 0.157515                           \node, 0.0869259             \node, 0.227106
+        |                            |                                            |                             |              |                            |                                          |                            \-xm-FR_Retortamonas_caviae, 0.845271
+        |                            |                                            |                             |              |                            |                                          |
+        |                            |                                            |                             |              |                            |                                           \-xm-FR_Kipferlia_bialata, 0.967925
+        |                            |                                            |                             |              |                            |
+        |                            |                                            |                             |              |                             \-xm-FR_Carpediemonas_membranifera, 1.18646
+        |                            |                                            |                             |              |
+        |                            |                                            |                             |              |                                           /-xm-PX_Monocercomonoides_sp, 0.365606
+        |                            |                                            |                             |              |                             /node, 0.451336
+        |                            |                                            |                             |              |                            |              \-xm-PX_Streblomastix_strix, 0.458992
+        |                            |                                            |                             |              |              /node, 0.0656768
+        |                            |                                            |                             |              |             |              |              /-xm-PX_Paratrimastix_eleionoma, 0.317422
+        |                            |                                            |                             |               \node, 0.222226              \node, 0.123135
+        |                            |                                            |                             |                            |                             \-xm-PX_Paratrimastix_pyriformis, 0.345985
+-node, 0.0                           |                                            |                             |                            |
+        |                            |                                            |                             |                             \-xm-PX_Trimastix_marina, 0.481279
+        |                            |                                            |                             |
+        |                            |                                            |                             |                                                                                                    /-xd-EG_Artemidia_motanka, 0.193535
+        |                            |                                            |                             |                                                                                      /node, 0.056175
+        |                            |                                            |                             |                                                                         /node, 0.16557             \-xd-EG_Hemistasia_phaeocysticola, 0.244413
+        |                            |                                            |                             |                                                                        |            |
+        |                            |                                            |                             |                                                                        |             \-xd-EG_Namystynia_karyoxenos, 0.177275
+        |                            |                                            |                             |                                                                        |
+        |                            |                                            |                             |                                                           /node, 0.305804                            /-xd-EG_Diplonema_sp, 0.193041
+        |                            |                                            |                             |                                                          |             |               /node, 0.137012
+        |                            |                                            |                             |                                                          |             |              |             |               /-xd-EG_Lacrimia_lanifica, 0.235298
+        |                            |                                            |                             |                                                          |             |              |              \node, 0.0415389
+        |                            |                                            |                             |                                                          |              \node, 0.0654471                           |               /-xd-EG_Rhynchopus_euleeides, 0.147048
+        |                            |                                            |               /node, 0.0217615                                                         |                            |                             \node, 0.0766678
+        |                            |                                            |              |              |                                                          |                            |                                            \-xd-EG_Rhynchopus_humris, 0.171182
+        |                            |                                            |              |              |                                                          |                            |
+        |                            |                                            |              |              |                                            /node, 0.0910535                            \-xd-EG_Sulcionema_specki, 0.225575
+        |               /node, 0.256671                                           |              |              |                                           |              |
+        |              |             |                                            |              |              |                                           |              |                            /-xd-EG_Bodo_saltans, 0.238712
+        |              |             |                                            |              |              |                                           |              |                           |
+        |              |             |                                            |              |              |                                           |              |                           |                                            /-xd-EG_Leishmania_braziliensis, 0.0705547
+        |              |             |                                            |              |              |                                           |              |              /node, 0.139361                            /node, 0.0973538
+        |              |             |                                            |              |              |                                           |              |             |             |              /node, 0.0804227              \-xd-EG_Leptomonas_pyrrhocoris, 0.0575198
+        |              |             |                                            |              |              |                                           |              |             |             |             |              |
+        |              |             |                                            |              |              |                                           |               \node, 0.450904             \node, 0.148105              \-xd-EG_Strigomonas_culicis, 0.201697
+        |              |             |                                            |              |              |                              /node, 0.187166                           |                           |
+        |              |             |                                            |              |              |                             |             |                            |                            \-xd-EG_Trypanosoma_sp, 0.169499
+        |              |             |                                            |              |              |                             |             |                            |
+        |              |             |                                            |              |              |                             |             |                             \-xd-EG_Neobodo_designis, 0.415414
+        |              |             |                                            |              |              |                             |             |
+        |              |             |                                            |              |              |                             |             |                                          /-xd-EG_Distigma_spP2, 0.191779
+        |              |             |                                            |              |              |                             |             |                            /node, 0.139137
+        |              |             |                                            |              |              |                             |             |              /node, 0.125525             \-xd-EG_Rhabdomonas_costata, 0.192956
+        |              |             |                                            |              |              |                             |             |             |             |
+        |              |             |                                            |              |              |                             |              \node, 0.145096             \-xd-EG_Eutreptiella_gymnastica, 0.25571
+        |              |             |                                            |              |              |                             |                           |
+        |              |             |                                            |              |              |               /node, 0.0325141                           \-xd-EG_Ploeotia_vitrea, 0.482385
+        |              |             |                                            |              |              |              |              |
+        |              |             |                                            |              |              |              |              |                                             /-xd-HL_Acrasis_kona, 0.344897
+        |              |             |                                            |              |              |              |              |                                            |
+        |              |             |                                            |              |              |              |              |                                            |                                            /-xd-HL_Naegleria_fowleri, 0.0122437
+        |              |             |                                            |              |              |              |              |                              /node, 0.0888403                            /node, 0.0628608
+        |              |             |                                            |              |              |              |              |                             |              |              /node, 0.0942096              \-xd-HL_Naegleria_lovaniensis, 0.0155078
+        |              |             |                                            |              |              |              |              |                             |              |             |              |
+        |              |             |                                            |              |              |              |              |                             |               \node, 0.265827              \-xd-HL_Naegleria_gruberi, 0.0930845
+        |              |             |                                            |              |              |              |              |               /node, 0.0994523                           |
+        |              |             |                                            |              |               \node, 0.0428763             |              |              |                             \-xd-HL_Willaertia_magna, 0.169614
+        |              |             |                                            |              |                             |              |              |              |
+        |              |             |                                            |              |                             |               \node, 0.0608151             |              /-xd-HL_Percolomonas_cosmoAE1, 0.564428
+        |              |             |                                            |              |                             |                             |               \node, 0.244841
+        |              |             |                                            |              |                             |                             |                             \-xd-HL_Percolomonas_cosmoWS, 0.432523
+        |              |             |                                            |              |                             |                             |
+        |              |             |                                            |              |                             |                              \-xd-HL_Pharyngomonas_kirbyi, 0.506218
+        |              |             |                                            |              |                             |
+        |              |             |                                            |              |                             |                             /-xd-JA_Andalucia_godoyi, 0.556796
+        |              |             |                                            |              |                             |               /node, 0.133575
+        |              |             |                                            |              |                              \node, 0.0536919             \-xd-JA_Stygiella_incarcerata, 0.560458
+        |              |             |                                            |              |                                            |
+        |              |             |                                            |              |                                             \-xd-JA_Seculamonas_ecuadoriensis, 0.535246
+        |              |             |                                            |              |
+        |              |             |                                            |              |                                                                                                    /-di-AL_Amphidinium_massartii, 0.205725
+        |              |             |                                            |              |                                                                                                   |
+        |              |             |                                            |              |                                                                                      /node, 0.269223                           /-di-AL_Polarella_glacialis, 0.160273
+        |              |             |                                            |              |                                                                                     |             |             /node, 0.0464371
+        |              |             |                                            |              |                                                                                     |              \node, 0.04732              \-di-AL_Scrippsiella_Hangoei, 0.176804
+        |              |             |                                            |              |                                                                         /node, 0.10532                         |
+        |              |             |                                            |              |                                                                        |            |                           \-di-AL_Togula_jolla, 0.162041
+        |              |             |                                            |              |                                                                        |            |
+        |              |             |                                            |              |                                                                        |             \-di-AL_Perkinsus_marinus, 0.566449
+        |              |             |                                            |              |                                                                        |
+        |              |             |                                            |              |                                                           /node, 0.192496                            /-di-AL_Besnoitia_besnoiti, 0.0452046
+        |              |             |                                            |              |                                                          |             |                            |
+        |              |             |                                             \node, 0.0325416                                                         |             |               /node, 0.541546                             /-di-AL_Hammondia_hammondi, 0.00708493
+        |              |             |                                                           |                                                          |             |              |             |               /node, 0.0231533
+        |              |             |                                                           |                                                          |             |              |              \node, 0.0274067              \-di-AL_Toxoplasma_gondii, 0.00527163
+        |              |             |                                                           |                                                          |              \node, 0.0900466                           |
+        |              |             |                                                           |                                                          |                            |                             \-di-AL_Neospora_caninum, 0.0226079
+        |              |             |                                                           |                                                          |                            |
+        |              |             |                                                           |                                             /node, 0.078689                           |               /-di-AL_Chromera_velia, 0.452903
+        |              |             |                                                           |                                            |             |                             \node, 0.0507649
+        |              |             |                                                           |                                            |             |                                            \-di-AL_Vitrella_brassicaformis, 0.347449
+        |              |             |                                                           |                                            |             |
+        |              |             |                                                           |                                            |             |                                           /-di-AL_Paramecium_tetraurelia, 0.554121
+        |              |             |                                                           |                                            |             |                             /node, 0.293715
+        |              |             |                                                           |                                            |             |              /node, 0.0665138             \-di-AL_Tetrahymena_thermophila, 0.453685
+        |              |             |                                                           |                                            |             |             |              |
+        |              |             |                                                           |                                            |              \node, 0.139341              \-di-AL_Stylonychia_lemnae, 0.619856
+        |              |             |                                                           |                                            |                           |
+        |              |             |                                                           |                                            |                            \-di-AL_Stentor_coeruleus, 0.698322
+        |              |             |                                                           |                              /node, 0.0194528
+        |              |             |                                                           |                             |              |                                                         /-di-ST_Albugo_candida, 0.210301
+        |              |             |                                                           |                             |              |                                           /node, 0.062042
+        |              |             |                                                           |                             |              |                             /node, 0.233967             \-di-ST_Phytophthora_sp, 0.111948
+        |              |             |                                                           |                             |              |                            |             |
+        |              |             |                                                           |                             |              |                            |              \-di-ST_Aphanomyces_astaci, 0.184879
+        |              |             |                                                           |                             |              |                            |
+        |              |             |                                                           |                             |              |              /node, 0.0610793                                            /-di-ST_Ectocarpus_siliculosus, 0.324279
+        |              |             |                                                           |                             |              |             |              |                              /node, 0.0314845
+        |              |             |                                                           |                             |              |             |              |               /node, 0.0328814              \-di-ST_Nannochloropsis_gaditana, 0.379954
+        |-node, 0.0882813            |                                                           |                             |              |             |              |              |              |
+        |              |             |                                                           |                             |              |             |               \node, 0.0759788              \-di-ST_Ochromonas_sp, 0.452409
+        |              |             |                                                           |                             |               \node, 0.102289                            |
+        |              |             |                                                           |               /node, 0.0349703                           |                             |              /-di-ST_Fistulifera_solaris, 0.273126
+        |              |             |                                                           |              |              |                            |                              \node, 0.318884
+        |              |             |                                                           |              |              |                            |                                            \-di-ST_Thalassiosira_pseudonana, 0.193856
+        |              |             |                                                           |              |              |                            |
+        |              |             |                                                           |              |              |                            |              /-di-ST_Aplanochytrium_sp, 0.275642
+        |              |             |                                                           |              |              |                             \node, 0.260653
+        |              |             |                                                           |              |              |                                           \-di-ST_Schizochytrium_aggregatum, 0.338004
+        |              |             |                                                           |              |              |
+        |              |             |                                                           |              |              |                                           /-di-RZ_Bigelowiella_natans, 0.160031
+        |              |             |                                                           |              |              |                            /node, 0.0250428
+        |              |             |                                                           |              |              |                           |               \-di-RZ_Chlorarachnion_reptans, 0.152312
+        |              |             |                                                           |              |              |              /node, 0.420429
+        |              |             |                                                           |              |              |             |             |               /-di-RZ_Lotharella_sp, 0.138008
+        |              |             |                                                           |              |               \node, 0.118312             \node, 0.0220716
+        |              |             |                                                           |              |                            |                             \-di-RZ_Partenskyella_glossopodia, 0.118313
+        |              |             |                                                           |              |                            |
+        |              |             |                                                           |              |                             \-di-RZ_Plasmodiophora_brassicae, 0.557468
+        |              |             |                                                           |              |
+        |              |             |                                                           |              |                                                                                      /-di-CH_Auxenochlorella_protothecoides, 0.247481
+        |              |             |                                                           |              |                                                                         /node, 0.11101
+        |              |             |                                                           |              |                                                                        |            |               /-di-CH_Chlorella_variabilis, 0.0927769
+        |              |             |                                                           |              |                                                          /node, 0.0372562            \node, 0.0910829
+        |              |             |                                                           |              |                                                         |              |                            \-di-CH_Micractinium_conductrix, 0.0743424
+        |              |             |                                                           |              |                                                         |              |
+        |              |             |                                                           |              |                                                         |               \-di-CH_Coccomyxa_subellipsoidea, 0.247719
+        |              |             |                                                           |              |                                                         |
+        |              |             |                                                           |              |                                            /node, 0.100413                                                          /-di-CH_Chlamydomonas_reinhardtii, 0.0646983
+        |              |             |                                                           |              |                                           |             |                                            /node, 0.0139158
+        |              |             |                                                           |              |                                           |             |                              /node, 0.133237              \-di-CH_Volvox_carteri, 0.0690906
+        |              |             |                                                            \node, 0.0195704                                          |             |                             |             |
+        |              |             |                                                                          |                                           |             |               /node, 0.0400988             \-di-CH_Edaphochlamys_debaryana, 0.0632597
+        |              |             |                                                                          |                             /node, 0.0427451            |              |              |
+        |              |             |                                                                          |                            |              |              \node, 0.0821471              \-di-CH_Dunaliella_salina, 0.292446
+        |              |             |                                                                          |                            |              |                            |
+        |              |             |                                                                          |                            |              |                             \-di-CH_Monoraphidium_neglectum, 0.273235
+        |              |             |                                                                          |                            |              |
+        |              |             |                                                                          |                            |              |              /-di-CH_Bathycoccus_prasinos, 0.355574
+        |              |             |                                                                          |                            |               \node, 0.226488
+        |              |             |                                                                          |                            |                             \-di-CH_Micromonas_commoda, 0.207475
+        |              |             |                                                                          |                            |
+        |              |             |                                                                          |                            |                                                                          /-di-PL_Amborella_trichopoda, 0.0820201
+        |              |             |                                                                          |                            |                                                                         |
+        |              |             |                                                                          |                            |                                                                         |                              /-di-PL_Ananas_comosus, 0.0476177
+        |              |             |                                                                          |                            |                                                            /node, 0.114308                            |
+        |              |             |                                                                          |                            |                                                           |             |               /node, 0.0180547                              /-di-PL_Oryza_brachyantha, 0.0312425
+        |              |             |                                                                          |               /node, 0.150941                                                          |             |              |              |               /node, 0.00879707
+        |              |             |                                                                          |              |             |                                                           |             |              |               \node, 0.0740849               \-di-PL_Triticum_urartu, 0.0931553
+        |              |             |                                                                          |              |             |                                                           |              \node, 0.0473157                            |
+        |              |             |                                                                          |              |             |                                             /node, 0.0190908                           |                              \-di-PL_Setaria_italica, 0.0351497
+        |              |             |                                                                          |              |             |                                            |              |                            |
+        |              |             |                                                                          |              |             |                                            |              |                            |                /-di-PL_Dioscorea_cayenensis, 0.064109
+        |              |             |                                                                          |              |             |                                            |              |                             \node, 0.00910841
+        |              |             |                                                                          |              |             |                              /node, 0.0676138             |                                             \-di-PL_Phalaenopsis_equestris, 0.0869136
+        |              |             |                                                                          |              |             |                             |              |              |
+        |              |             |                                                                          |              |             |                             |              |               \-di-PL_Selaginella_moellendorffii, 0.171359
+        |              |             |                                                                          |              |             |                             |              |
+        |              |             |                                                                          |              |             |               /node, 0.0295513             |               /-di-PL_Marchantia_polymorpha, 0.118346
+        |              |             |                                                                          |              |             |              |              |               \node, 0.0328131
+        |              |             |                                                                           \node, 0.0394035            |              |              |                              \-di-PL_Physcomitrella_patens, 0.12655
+        |              |             |                                                                                         |              \node, 0.0980073             |
+        |              |             |                                                                                         |                            |               \-di-PL_Chara_braunii, 0.221247
+        |              |             |                                                                                         |                            |
+        |              |             |                                                                                         |                             \-di-PL_Klebsormidium_nitens, 0.200973
+        |              |             |                                                                                         |
+        |              |             |                                                                                         |                                                          /-di-RP_Chondrus_crispus, 0.158727
+        |              |             |                                                                                         |                                            /node, 0.234451
+        |              |             |                                                                                         |                             /node, 0.0669213             \-di-RP_Gracilariopsis_chorda, 0.17009
+        |              |             |                                                                                         |                            |              |
+        |              |             |                                                                                         |              /node, 0.0286406              \-di-RP_Porphyra_umbilicalis, 0.42394
+        |              |             |                                                                                         |             |              |
+        |              |             |                                                                                         |             |              |               /-di-RP_Porphyridium_purpureum, 0.4848
+        |              |             |                                                                                          \node, 0.255292              \node, 0.0369111
+        |              |             |                                                                                                       |                              \-di-RP_Rhodella_sp, 0.482471
+        |              |             |                                                                                                       |
+        |              |             |                                                                                                        \-di-RP_Rhodosorus_marinus, 0.418901
+        |              |             |
+        |              |              \-am-AM_Clastostelium_recurvatum, 0.312938
+        |              |
+        |              |              /-am-AM_Dictyostelium_discoideum, 0.0718177
+        |               \node, 0.114718
+        |                             \-am-AM_Dictyostelium_purpureum, 0.0689513
+        |
+         \-am-AM_Polysphondylium_pallidum, 0.101958
+
+funDi Log-likelihood of the tree 1: -6397557.927; rho: 0.5; central branch length: 0.657
+funDi Log-likelihood of the tree 2: -6396854.0; rho: 0.497; central branch length: 0.607
+funDi Log-likelihood of the tree 3: -6396316.688; rho: 0.492; central branch length: 0.463
+funDi Log-likelihood of the tree 4: -6395892.732; rho: 0.49; central branch length: 0.403
+funDi Log-likelihood of the tree 5: -6395558.486; rho: 0.49; central branch length: 0.37
+funDi Log-likelihood of the tree 6: -6395311.509; rho: 0.487; central branch length: 0.331
+funDi Log-likelihood of the tree 7: -6395129.289; rho: 0.487; central branch length: 0.342
+funDi Log-likelihood of the tree 8: -6395017.225; rho: 0.482; central branch length: 0.484
+funDi Log-likelihood of the tree 9: -6394997.526; rho: 0.491; central branch length: 0.437
+funDi Log-likelihood of the tree 10: -6397535.432; rho: 0.495; central branch length: 0.626
+funDi Log-likelihood of the tree 11: -6396926.172; rho: 0.483; central branch length: 0.882
+funDi Log-likelihood of the tree 12: -6396291.849; rho: 0.492; central branch length: 0.422
+funDi Log-likelihood of the tree 13: -6395860.94; rho: 0.49; central branch length: 0.393
+funDi Log-likelihood of the tree 14: -6395522.223; rho: 0.49; central branch length: 0.383
+funDi Log-likelihood of the tree 15: -6395267.159; rho: 0.489; central branch length: 0.365
+funDi Log-likelihood of the tree 16: -6395093.201; rho: 0.487; central branch length: 0.345
+funDi Log-likelihood of the tree 17: -6394978.193; rho: 0.491; central branch length: 0.439
+funDi Log-likelihood of the tree 18: -6394966.667; rho: 0.486; central branch length: 0.425
+funDi Log-likelihood of the tree 19: -6397521.138; rho: 0.495; central branch length: 0.609
+funDi Log-likelihood of the tree 20: -6396801.103; rho: 0.49; central branch length: 0.6
+funDi Log-likelihood of the tree 21: -6396270.894; rho: 0.491; central branch length: 0.421
+funDi Log-likelihood of the tree 22: -6395835.526; rho: 0.49; central branch length: 0.413
+funDi Log-likelihood of the tree 23: -6395572.386; rho: 0.479; central branch length: 0.625
+funDi Log-likelihood of the tree 24: -6395242.106; rho: 0.487; central branch length: 0.379
+funDi Log-likelihood of the tree 25: -6395068.138; rho: 0.488; central branch length: 0.35
+funDi Log-likelihood of the tree 26: -6394957.025; rho: 0.487; central branch length: 0.479
+funDi Log-likelihood of the tree 27: -6394956.109; rho: 0.488; central branch length: 0.393
+funDi Log-likelihood of the tree 28: -6424023.069; rho: 0.045; central branch length: 3.684
+funDi Log-likelihood of the tree 29: -6396787.362; rho: 0.492; central branch length: 0.579
+funDi Log-likelihood of the tree 30: -6396249.554; rho: 0.492; central branch length: 0.461
+funDi Log-likelihood of the tree 31: -6395889.4; rho: 0.482; central branch length: 0.656
+funDi Log-likelihood of the tree 32: -6395485.003; rho: 0.494; central branch length: 0.395
+funDi Log-likelihood of the tree 33: -6395262.049; rho: 0.489; central branch length: 0.543
+funDi Log-likelihood of the tree 34: -6395049.066; rho: 0.488; central branch length: 0.369
+funDi Log-likelihood of the tree 35: -6394940.609; rho: 0.49; central branch length: 0.461
+funDi Log-likelihood of the tree 36: -6394941.73; rho: 0.485; central branch length: 0.398
+funDi Log-likelihood of the tree 37: -6422380.08; rho: 0.05; central branch length: 3.38
+funDi Log-likelihood of the tree 38: -6396782.846; rho: 0.496; central branch length: 0.61
+funDi Log-likelihood of the tree 39: -6396242.735; rho: 0.492; central branch length: 0.465
+funDi Log-likelihood of the tree 40: -6395881.038; rho: 0.484; central branch length: 0.658
+funDi Log-likelihood of the tree 41: -6395477.405; rho: 0.492; central branch length: 0.392
+funDi Log-likelihood of the tree 42: -6395226.045; rho: 0.491; central branch length: 0.35
+funDi Log-likelihood of the tree 43: -6395042.161; rho: 0.488; central branch length: 0.37
+funDi Log-likelihood of the tree 44: -6394933.479; rho: 0.491; central branch length: 0.446
+funDi Log-likelihood of the tree 45: -6394912.395; rho: 0.486; central branch length: 0.493
+funDi Log-likelihood of the tree 46: -6426624.698; rho: 0.038; central branch length: 4.4
+funDi Log-likelihood of the tree 47: -6396781.373; rho: 0.491; central branch length: 0.604
+funDi Log-likelihood of the tree 48: -6396242.828; rho: 0.492; central branch length: 0.469
+funDi Log-likelihood of the tree 49: -6395813.324; rho: 0.489; central branch length: 0.432
+funDi Log-likelihood of the tree 50: -6395482.254; rho: 0.492; central branch length: 0.365
+funDi Log-likelihood of the tree 51: -6395256.848; rho: 0.485; central branch length: 0.559
+funDi Log-likelihood of the tree 52: -6395041.729; rho: 0.488; central branch length: 0.377
+funDi Log-likelihood of the tree 53: -6394934.144; rho: 0.487; central branch length: 0.424
+funDi Log-likelihood of the tree 54: -6394914.093; rho: 0.484; central branch length: 0.525
+funDi Log-likelihood of the tree 55: -6397502.194; rho: 0.493; central branch length: 0.657
+funDi Log-likelihood of the tree 56: -6396788.631; rho: 0.494; central branch length: 0.615
+funDi Log-likelihood of the tree 57: -6396264.234; rho: 0.489; central branch length: 0.419
+funDi Log-likelihood of the tree 58: -6395822.114; rho: 0.489; central branch length: 0.422
+funDi Log-likelihood of the tree 59: -6395483.452; rho: 0.488; central branch length: 0.408
+funDi Log-likelihood of the tree 60: -6395228.011; rho: 0.487; central branch length: 0.389
+funDi Log-likelihood of the tree 61: -6395061.119; rho: 0.485; central branch length: 0.348
+funDi Log-likelihood of the tree 62: -6394943.06; rho: 0.487; central branch length: 0.491
+funDi Log-likelihood of the tree 63: -6394933.501; rho: 0.485; central branch length: 0.439
+funDi Log-likelihood of the tree 64: -6397527.706; rho: 0.499; central branch length: 0.623
+funDi Log-likelihood of the tree 65: -6396802.851; rho: 0.494; central branch length: 0.602
+funDi Log-likelihood of the tree 66: -6396279.491; rho: 0.491; central branch length: 0.425
+funDi Log-likelihood of the tree 67: -6395838.435; rho: 0.486; central branch length: 0.433
+funDi Log-likelihood of the tree 68: -6395501.208; rho: 0.49; central branch length: 0.399
+funDi Log-likelihood of the tree 69: -6395246.595; rho: 0.489; central branch length: 0.38
+funDi Log-likelihood of the tree 70: -6395070.921; rho: 0.489; central branch length: 0.371
+funDi Log-likelihood of the tree 71: -6394957.635; rho: 0.487; central branch length: 0.465
+funDi Log-likelihood of the tree 72: -6394959.149; rho: 0.489; central branch length: 0.422
+funDi Log-likelihood of the tree 73: -6397551.432; rho: 0.497; central branch length: 0.9
+funDi Log-likelihood of the tree 74: -6408085.206; rho: 0.181; central branch length: 4.605
+funDi Log-likelihood of the tree 75: -6396300.568; rho: 0.49; central branch length: 0.452
+funDi Log-likelihood of the tree 76: -6395864.101; rho: 0.489; central branch length: 0.446
+funDi Log-likelihood of the tree 77: -6395530.262; rho: 0.49; central branch length: 0.401
+funDi Log-likelihood of the tree 78: -6395277.696; rho: 0.49; central branch length: 0.378
+funDi Log-likelihood of the tree 79: -6395147.832; rho: 0.488; central branch length: 0.625
+funDi Log-likelihood of the tree 80: -6394987.113; rho: 0.488; central branch length: 0.471
+funDi Log-likelihood of the tree 81: -6394971.316; rho: 0.493; central branch length: 0.504

@@ -534,6 +534,7 @@ if __name__ == "__main__":
         "-te", "data/Kelsey/c60.treefile",
         "-d", "data/Kelsey/baldauf_archaea_all.csv",
         "-s", "data/Kelsey/supermatrix_loci_183.fasta",
+	"-m", "C60",
         "-i", "0.1",
         "-nt", "20"
     ]

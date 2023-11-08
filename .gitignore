@@ -10,3 +10,4 @@ test_*
 joran*
 *.sh
 *.sh.*
+sample_*/
