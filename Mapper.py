@@ -324,6 +324,7 @@ def generate_summary(tree_count):
     for i in range(1, tree_count + 1):
 
         # TODO: read up on tuples
+        # NOTE: i did, they are supposed to be immutable and therefore unsuitable for our purpose
         # a list of three tree_properties, fundi log-likelihood, rho value and central branch length
         attribute = [0, 0, 0]
 
@@ -351,23 +352,7 @@ def generate_summary(tree_count):
     # get the best tree based on funDi log-likelihood
     # TODO: this could be simpler
     best_tree_index = max(tree_properties, key=lambda key: tree_properties[key][0])
-    best_tree = None
-
-    # TODO: make use of the .treefile instead of the .iqtree file
-    with open(f"test_{best_tree_index}.iqtree", "r") as tree_file:
-        section_found = False
-
-        for line in tree_file:
-
-            if "Tree in newick format:" in line:
-                section_found = True
-                continue
-
-            if section_found is True:
-
-                if line != "\n":
-                    best_tree = Tree(line)
-                    break
+    best_tree = Tree(f"test_{best_tree_index}.treefile")
 
     # we're overwriting the initial .png image,
     # but only for the best tree
