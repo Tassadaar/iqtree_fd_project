@@ -41,11 +41,23 @@ def validate_def_file(tree, def_file):
         for line in file:
             clean_line = line.rstrip(" ,\n")  # strip trailing whitespaces, commas or newline characters
             taxon_group = set(re.split(r"[,\s]+", clean_line))  # parse clean line delimited by comma or whitespace
-            taxa_groups.append(set(taxon for taxon in taxon_group if taxon))  # remove empty strings
 
-    # check 1: definition file must have exactly two groups of taxa
-    if len(taxa_groups) != 2:
-        raise ValueError(f"Definition file does not have exactly two groups of taxa")
+            # ignore empty sets
+            if taxon_group and not (len(taxon_group) == 1 and "" in taxon_group):
+                taxa_groups.append(taxon_group)
+
+    # check 1: definition file must not be blank
+    if not taxa_groups:
+        raise ValueError(f"Definition file is blank!")
+
+    if len(taxa_groups) > 2:
+        raise ValueError(f"Definition file contains more than 2 taxa groups!")
+
+    leaves = set(tree.get_leaf_names())  # assuming leaves are correct as reference
+
+    # auto-complete the list if on
+    if len(taxa_groups) == 1:
+        taxa_groups.append(leaves - taxa_groups[0])
 
     # check 2: the two groups of taxa must be non-overlapping, i.e. is there a taxon in both groups?
     set_intersect = taxa_groups[0] & taxa_groups[1]
@@ -55,7 +67,6 @@ def validate_def_file(tree, def_file):
 
     # check 3: leaves in the tree must all be in the definition file
     all_taxa = taxa_groups[0] | taxa_groups[1]
-    leaves = set(tree.get_leaf_names())
     unique_leaves = leaves - all_taxa
 
     if unique_leaves:
@@ -531,12 +542,10 @@ if __name__ == "__main__":
     # emulating commandline arguments for development
     sys.argv = [
         "Mapper.py",
-        "-te", "data/Kelsey/c60.treefile",
-        "-d", "data/Kelsey/baldauf_archaea_all.csv",
-        "-s", "data/Kelsey/supermatrix_loci_183.fasta",
-	"-m", "C60",
-        "-i", "0.1",
-        "-nt", "20"
+        "-te", "data/Hector/TAB",
+        "-d", "data/Hector/def",
+        "-s", "data/Hector/conAB1rho60.fa",
+        "-i", "0.3"
     ]
 
     arguments = parser.parse_args()
