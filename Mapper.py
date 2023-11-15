@@ -423,14 +423,9 @@ def run_iqtrees(trees, alignment_address, avg_alpha, model, nexus_file, cores, l
 def generate_summary(tree_count):
 
     # get tree_properties
-    tree_properties = {}
+    tree_properties = []
 
     for i in range(1, tree_count + 1):
-
-        # TODO: read up on tuples
-        # NOTE: i did, they are supposed to be immutable and therefore unsuitable for our purpose
-        # a list of three tree_properties, fundi log-likelihood, rho value and central branch length
-        attribute = [0, 0, 0]
 
         with open(f"test_{i}.log", "r") as iqtree_file:
 
@@ -438,41 +433,40 @@ def generate_summary(tree_count):
 
                 if "Best FunDi parameter rho:" in line:
                     words = line.split()
-                    attribute[1] = float(words[4])
+                    rho_value = float(words[4])
                     continue
 
                 if "Best FunDi central branch length:" in line:
                     words = line.split()
-                    attribute[2] = float(words[5])
+                    central_branch_length = float(words[5])
                     continue
 
                 if "FunDi log-likelihood:" in line:
                     words = line.split()
-                    attribute[0] = float(words[2])
+                    log_likelihood = float(words[2])
                     break
 
-        tree_properties[i] = attribute
+        tree_properties.append((i, log_likelihood, rho_value, central_branch_length))
 
-    # get the best tree based on funDi log-likelihood
+    # sort the trees based on largest funDi log-likelihood
     # TODO: this could be simpler
-    best_tree_index = max(tree_properties, key=lambda key: tree_properties[key][0])
-    best_tree = Tree(f"test_{best_tree_index}.treefile")
+    sorted_tree_properties = sorted(tree_properties, key=lambda key: key[1], reverse=True)
 
     # we're overwriting the initial .png image,
     # but only for the best tree
 
     # style the tree
-    tree_style = TreeStyle()
-    tree_style.show_leaf_name = True
-    tree_style.show_branch_length = True
-    tree_style.branch_vertical_margin = 10
-
-    # give each internal node an explicit name
-    for node in best_tree.traverse():
-
-        if not node.is_leaf():
-            # TODO: try empty strings
-            node.name = "node"
+    # tree_style = TreeStyle()
+    # tree_style.show_leaf_name = True
+    # tree_style.show_branch_length = True
+    # tree_style.branch_vertical_margin = 10
+    #
+    # # give each internal node an explicit name
+    # for node in best_tree.traverse():
+    #
+    #     if not node.is_leaf():
+    #         # TODO: try empty strings
+    #         node.name = "node"
 
     # best_tree.render(file_name=f"test_{best_tree_index}.png", tree_style=tree_style, units="px", w=800, h=1000)
     # TODO: root the best_tree, reference tree outgroup
@@ -483,21 +477,25 @@ def generate_summary(tree_count):
     with open("test_summary.txt", "w") as summary_file:
 
         summary_file.write(
-            f"Tree {best_tree_index} has the largest funDi log-likelihood of {tree_properties[best_tree_index][0]}.\n"
-            f"rho: {tree_properties[best_tree_index][1]}.\n"
-            f"Central branch length: {tree_properties[best_tree_index][2]}\n"
+            f"Tree {sorted_tree_properties[0][0]} "
+            f"has the largest funDi log-likelihood of {sorted_tree_properties[0][1]}.\n"
+            f"rho: {sorted_tree_properties[0][2]}.\n"
+            f"Central branch length: {sorted_tree_properties[0][3]}\n"
         )
 
         # print tree with branch lengths
         # TODO: look into documentation of .get_ascii function
+        best_tree = Tree(f"test_{sorted_tree_properties[0][0]}.treefile")
         summary_file.write(f"{best_tree.get_ascii(attributes=['name', 'dist'], show_internal=True)}\n\n")
         # summary_file.write(f"See \"test_{best_tree_index}.png\" for a tree illustration.\n\n")
 
-        # TODO: sort trees by log likelihood
-        for tree, attribute in tree_properties.items():
-            summary_file.write(f"funDi Log-likelihood of the tree {tree}: {attribute[0]}; "
-                               f"rho: {attribute[1]}; "
-                               f"central branch length: {attribute[2]}\n")
+        summary_file.write("The following list ranks the remaining trees based on best log-likelihood:\n")
+
+        for i in range(1, len(sorted_tree_properties)):
+            summary_file.write(f"funDi Log-likelihood of the tree {sorted_tree_properties[i][0]}: "
+                               f"{sorted_tree_properties[i][1]}; "
+                               f"rho: {sorted_tree_properties[i][2]}; "
+                               f"central branch length: {sorted_tree_properties[i][3]}\n")
 
     print("Summary generated under 'test_summary.txt'.")
 
