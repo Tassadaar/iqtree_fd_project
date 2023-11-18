@@ -95,9 +95,6 @@ def main(args):
         # To get the number of trees generated, we take number of proportions to the power of 2
         generate_summary(len(trees), defined_groups)
 
-    except AssertionError as e:
-        print(f"Oops! {e}")
-
     except NameError as e:
         print(f"Panda-monium! {e}")
 
@@ -139,16 +136,20 @@ def validate_def_file(tree, def_file):
     # store definition file in memory
     # as a list of two sets of taxa
     # this ensures uniqueness, assuming that order does not matter with def files
-    with open(def_file, "r", newline="") as file:
+    with open(def_file, "r") as file:
         taxa_groups = []
 
         for line in file:
-            clean_line = line.rstrip(" ,\n")  # strip trailing whitespaces, commas or newline characters
-            taxon_group = set(re.split(r"[,\s]+", clean_line))  # parse clean line delimited by comma or whitespace
+            # clean line by removing whitespace, comma or newline characters
+            clean_line = line.rstrip(" ,\n")
 
             # ignore empty sets
-            if taxon_group and not (len(taxon_group) == 1 and "" in taxon_group):
-                taxa_groups.append(taxon_group)
+            if clean_line == "":
+                continue
+
+            # parse clean line delimited by comma or whitespace
+            taxon_group = set(re.split(r"[,\s]+", clean_line))
+            taxa_groups.append(taxon_group)
 
     # check 1: definition file must not be blank
     if not taxa_groups:
@@ -159,15 +160,13 @@ def validate_def_file(tree, def_file):
 
     leaves = set(tree.get_leaf_names())  # assuming leaves are correct as reference
 
-    # auto-complete the list if on
+    # auto-complete the list if only one group of taxa is provided
     if len(taxa_groups) == 1:
         taxa_groups.append(leaves - taxa_groups[0])
 
     # check 2: the two groups of taxa must be non-overlapping, i.e. is there a taxon in both groups?
-    set_intersect = taxa_groups[0] & taxa_groups[1]
-
-    if set_intersect:
-        raise ValueError(f"Defined groups have overlapping items: {set_intersect}.")
+    if taxa_groups[0] & taxa_groups[1]:
+        raise ValueError(f"Defined groups have overlapping items: {taxa_groups[0] & taxa_groups[1]}.")
 
     # check 3: leaves in the tree must all be in the definition file
     all_taxa = taxa_groups[0] | taxa_groups[1]
@@ -482,7 +481,6 @@ def generate_summary(tree_count, taxa_groups):
         )
 
         # print tree with branch lengths
-        # TODO: look into documentation of .get_ascii function
         summary_file.write(f"{best_tree.get_ascii(attributes=['name', 'dist'], show_internal=True)}\n\n")
         # summary_file.write(f"See \"test_{best_tree_index}.png\" for a tree illustration.\n\n")
 
