@@ -446,7 +446,7 @@ def generate_summary(tree_count, taxa_groups):
 
     # sort the trees based on largest funDi log-likelihood
     # TODO: this could be simpler
-    sorted_tree_properties = sorted(tree_properties, key=lambda key: key[1], reverse=True)
+    sorted_tree_properties = sorted(tree_properties, key=lambda attr_tuple: attr_tuple[1], reverse=True)
 
     # we're overwriting the initial .png image,
     # but only for the best tree
