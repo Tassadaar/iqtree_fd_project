@@ -1,0 +1,67 @@
+IQ-TREE multicore version 2.2.3 COVID-edition for Mac OS X 64-bit built Aug 13 2023
+Developed by Bui Quang Minh, James Barbetti, Nguyen Lam Tung,
+Olga Chernomor, Heiko Schmidt, Dominik Schrempf, Michael Woodhams, Ly Trong Nhan.
+
+Host:    tfbc5.wpa.dal.ca (SSE4.2, 16 GB RAM)
+Command: iqtree2 -s data/Hector/conAB1rho60.fa --tree-fix test_2.tree -m LG+fundi_C10+G{1.0179257637} --mdef nex -nt 2 --prefix test_2 -prec 10 -blfix --fundi 6,4,5,9,10,8,7,estimate -redo --quiet
+Seed:    29546 (Using SPRNG - Scalable Parallel Random Number Generator)
+Time:    Tue Nov 21 15:43:48 2023
+Kernel:  SSE2 - 2 threads (10 CPU cores detected)
+
+Reading alignment file data/Hector/conAB1rho60.fa ... Fasta format detected
+Reading fasta file: done in 0.00299096 secs using 91.78% CPU
+Alignment most likely contains protein sequences
+Constructing alignment: done in 0.0141289 secs using 161.2% CPU
+Alignment has 12 sequences with 20000 columns, 18048 distinct patterns
+17381 parsimony-informative, 1645 singleton sites, 974 constant sites
+    Gap/Ambiguity  Composition  p-value
+Analyzing sequences: done in 0.000249147 secs using 158.1% CPU
+   1  1     0.00%    passed     83.57%
+   2  21    0.00%    passed     96.11%
+   3  23    0.00%    passed     59.21%
+   4  24    0.00%    passed     89.98%
+   5  3     0.00%    passed     96.51%
+   6  4     0.00%    passed     98.81%
+   7  5     0.00%    passed     95.63%
+   8  6     0.00%    passed     96.20%
+   9  7     0.00%    passed     82.79%
+  10  8     0.00%    passed     99.06%
+  11  9     0.00%    passed     71.32%
+  12  10    0.00%    passed     74.27%
+****  TOTAL    0.00%  0 sequences failed composition chi2 test (p-value<5%; df=19)
+Checking for duplicate sequences: done in 0.000391006 secs using 196.2% CPU
+Reading model definition file nex ... 85 models and 224 frequency vectors loaded
+Reading input tree file test_2.tree ... rooted tree
+Model LG+fundi_C10+G{1.0179257637} is alias for LG+FMIX{fundi_C10pi1:1:0.11709851648333335,fundi_C10pi2:1:0.0851935357,fundi_C10pi3:1:0.09903159762500001,fundi_C10pi4:1:0.0898412076,fundi_C10pi5:1:0.10809209515833335,fundi_C10pi6:1:0.13407293953333335,fundi_C10pi7:1:0.058841209133333336,fundi_C10pi8:1:0.06722843545,fundi_C10pi9:1:0.1350456220666667,fundi_C10pi10:1:0.10555484119166667}+G{1.0179257637}
+
+NOTE: 1340 MB RAM (1 GB) is required!
+Estimate model parameters (epsilon = 0.010)
+1. Initial log-likelihood: -428101.064
+Optimal log-likelihood: -428101.064
+Mixture weights: 0.117 0.085 0.099 0.090 0.108 0.134 0.059 0.067 0.135 0.106
+Gamma shape alpha: 1.018
+Parameters optimization took 1 rounds (0.667 sec)
+Wrote distance file to... 
+BEST SCORE FOUND : -428101.064
+Optimizing FunDi model...
+rho = 0.000
+Central branch length: 0.000
+Optimizing FunDi model parameters...
+Best FunDi parameter rho: 0.596
+Best FunDi central branch length: 0.113
+FunDi log-likelihood: -376023.088
+Time taken to optimize FunDi model: 1.911 sec
+Total tree length: 7.345
+
+Total number of iterations: 0
+CPU time used for tree search: 0.000 sec (0h:0m:0s)
+Wall-clock time used for tree search: 0.000 sec (0h:0m:0s)
+Total CPU time used: 4.800 sec (0h:0m:4s)
+Total wall-clock time used: 2.594 sec (0h:0m:2s)
+
+Analysis results written to: 
+  IQ-TREE report:                test_2.iqtree
+  Maximum-likelihood tree:       test_2.treefile
+  Screen log file:               test_2.log
+
+Date and Time: Tue Nov 21 15:43:50 2023

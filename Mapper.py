@@ -1,3 +1,4 @@
+import glob
 import os
 import sys
 import argparse
@@ -93,7 +94,7 @@ def main(args):
         run_iqtrees(trees, alignment_address, avg_alpha, model, nexus_address, cores, a_tree.get_leaf_names())
 
         # To get the number of trees generated, we take number of proportions to the power of 2
-        generate_summary(len(trees), model, args.increment, defined_groups)
+        generate_summary(len(trees), model, args.increment, defined_groups, args.keep)
 
     except NameError as e:
         print(f"Panda-monium! {e}")
@@ -373,7 +374,7 @@ def write_nexus_file(weights, model):
     weight_line = f"model fundi_{model} = FMIX{{{','.join(weight_statements)}}};"
 
     # write to file
-    with open('test_nex.nex', "w") as nex_file:
+    with open("nex", "w") as nex_file:
         nex_file.write("#nexus\nbegin models;\n")
 
         for line in out_freqs:
@@ -383,7 +384,7 @@ def write_nexus_file(weights, model):
 
         nex_file.write("end;")
 
-    return 'test_nex.nex'
+    return "nex"
 
 
 def run_iqtrees(trees, alignment_address, avg_alpha, model, nexus_file, cores, leaves):
@@ -416,7 +417,7 @@ def run_iqtrees(trees, alignment_address, avg_alpha, model, nexus_file, cores, l
         i += 1
 
 
-def generate_summary(tree_count, model, increment, taxa_groups):
+def generate_summary(tree_count, model, increment, taxa_groups, keep):
 
     # get tree_properties
     tree_properties = []
@@ -471,14 +472,15 @@ def generate_summary(tree_count, model, increment, taxa_groups):
     # print to summary file
     print("\nGenerating summary...\n")
 
-    with open("test_summary.txt", "w") as summary_file:
+    with open("summary.txt", "w") as summary_file:
 
         summary_file.write(f"Trees generated: {tree_count}\n")
         summary_file.write(f"Model used: fundi_{model}\n")
         summary_file.write(f"Increment used: {increment}\n")
 
+        best_index = sorted_tree_properties[0][0]
         summary_file.write(
-            f"Best tree: Tree {sorted_tree_properties[0][0]}\n"
+            f"Best tree: Tree {best_index}\n"
             f"Best funDi log-likelihood: {sorted_tree_properties[0][1]}\n"
             f"rho: {sorted_tree_properties[0][2]}.\n"
             f"Central branch length: {sorted_tree_properties[0][3]}\n"
@@ -498,7 +500,21 @@ def generate_summary(tree_count, model, increment, taxa_groups):
                                f"rho: {sorted_tree_properties[i][2]}; "
                                f"central branch length: {sorted_tree_properties[i][3]}\n")
 
-    print("Summary generated under 'test_summary.txt'.")
+    print("Summary generated under \"summary.txt\".")
+
+    subprocess.run(["mv", f"test_{best_index}.treefile", "best_tree.treefile"])
+    subprocess.run(["mv", f"test_{best_index}.iqtree", "best_tree.iqtree"])
+    subprocess.run(["mv", f"test_{best_index}.log", "best_tree.log"])
+    subprocess.run(["mv", f"test_{best_index}.ckp.gz", "best_tree.ckp.gz"])
+
+    if keep:
+        return
+
+    # Get a list of all filenames matching test_*.*
+    files = glob.glob("test_*.*")
+    # then constructs the command by appending these filenames to ["rm", "-f"].
+    if files:
+        subprocess.run(["rm", "-f"] + files)
 
 
 if __name__ == "__main__":
@@ -522,6 +538,9 @@ if __name__ == "__main__":
 
     parser.add_argument("-nt", "--cores", required=False, default="2",
                         help="Number of CPU cores to use")
+
+    parser.add_argument("-k", "--keep", required=False, action="store_true",
+                        help="Keeps files associated with trees which are not the best")
 
     # emulating commandline arguments for development
     sys.argv = [
