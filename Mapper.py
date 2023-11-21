@@ -446,7 +446,6 @@ def generate_summary(tree_count, model, increment, taxa_groups, keep):
         tree_properties.append((i, log_likelihood, rho_value, central_branch_length))
 
     # sort the trees based on largest funDi log-likelihood
-    # TODO: this could be simpler
     sorted_tree_properties = sorted(tree_properties, key=lambda attr_tuple: attr_tuple[1], reverse=True)
 
     # we're overwriting the initial .png image,
@@ -462,7 +461,6 @@ def generate_summary(tree_count, model, increment, taxa_groups, keep):
     # for node in best_tree.traverse():
     #
     #     if not node.is_leaf():
-    #         # TODO: try empty strings
     #         node.name = "node"
 
     # best_tree.render(file_name=f"test_{best_tree_index}.png", tree_style=tree_style, units="px", w=800, h=1000)
