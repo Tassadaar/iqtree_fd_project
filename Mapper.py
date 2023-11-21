@@ -53,7 +53,7 @@ def main(args):
         a_branch = a_tree.get_children()[0].dist + a_tree.get_children()[1].dist
         b_branch = b_tree.get_children()[0].dist + b_tree.get_children()[1].dist
 
-        print(f"branch a: {a_branch}, branch b: {b_branch}\n")
+        print(f"\nbranch a: {a_branch}, branch b: {b_branch}\n")
 
         # get alpha and beta from a cartesian product of proportions
         for alpha, beta in itertools.product(proportions, repeat=2):
@@ -93,7 +93,7 @@ def main(args):
         run_iqtrees(trees, alignment_address, avg_alpha, model, nexus_address, cores, a_tree.get_leaf_names())
 
         # To get the number of trees generated, we take number of proportions to the power of 2
-        generate_summary(len(trees), defined_groups)
+        generate_summary(len(trees), model, args.increment, defined_groups)
 
     except NameError as e:
         print(f"Panda-monium! {e}")
@@ -416,7 +416,7 @@ def run_iqtrees(trees, alignment_address, avg_alpha, model, nexus_file, cores, l
         i += 1
 
 
-def generate_summary(tree_count, taxa_groups):
+def generate_summary(tree_count, model, increment, taxa_groups):
 
     # get tree_properties
     tree_properties = []
@@ -469,16 +469,22 @@ def generate_summary(tree_count, taxa_groups):
     best_tree.write(format=1, outfile=f"test_{sorted_tree_properties[0][0]}.treefile")
 
     # print to summary file
-    print("Generating summary...")
+    print("\nGenerating summary...\n")
 
     with open("test_summary.txt", "w") as summary_file:
 
+        summary_file.write(f"Trees generated: {tree_count}\n")
+        summary_file.write(f"Model used: fundi_{model}\n")
+        summary_file.write(f"Increment used: {increment}\n")
+
         summary_file.write(
-            f"Tree {sorted_tree_properties[0][0]} "
-            f"has the largest funDi log-likelihood of {sorted_tree_properties[0][1]}.\n"
+            f"Best tree: Tree {sorted_tree_properties[0][0]}\n"
+            f"Best funDi log-likelihood: {sorted_tree_properties[0][1]}\n"
             f"rho: {sorted_tree_properties[0][2]}.\n"
             f"Central branch length: {sorted_tree_properties[0][3]}\n"
         )
+
+        summary_file.write("\nRooted best tree:\n")
 
         # print tree with branch lengths
         summary_file.write(f"{best_tree.get_ascii(attributes=['name', 'dist'], show_internal=True)}\n\n")
