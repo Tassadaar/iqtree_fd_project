@@ -82,7 +82,6 @@ def main(args):
         a_weight, b_weight = calculate_weights(a_tree, b_tree)
         avg_alpha = calculate_weighted_average_alpha("test_a.iqtree", "test_b.iqtree", a_weight, b_weight)
 
-        # NOTE: discuss purpose of custom nexus file with Hector
         if not nexus_address:
             avg_mixture_weights = calculate_weighted_average_mixture_weights(
                 "test_a.iqtree", "test_b.iqtree", a_weight, b_weight
@@ -509,9 +508,8 @@ def generate_summary(tree_count, model, increment, taxa_groups, keep):
         return
 
     # Get a list of all filenames matching test_*.*
-    files = glob.glob("test_*.*")
     # then constructs the command by appending these filenames to ["rm", "-f"].
-    if files:
+    if files := glob.glob("test_*.*"):  # all hail walrus
         subprocess.run(["rm", "-f"] + files)
 
 
