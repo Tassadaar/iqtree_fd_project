@@ -21,6 +21,8 @@ def main(args):
         a_tree, b_tree = get_ref_subtrees(master_tree, defined_groups)
 
         # write subtrees into newick files
+        # SUGGESTION: rename to 'subtree_a.newick' and 'subtree_b.newick'
+        # so to prevent confusion with 'test_a.treefile' and 'test_b.treefile' below
         a_tree.write(format=1, outfile="test_a.tree")
         b_tree.write(format=1, outfile="test_b.tree")
 
@@ -39,7 +41,7 @@ def main(args):
                 "-m", f"LG+{model}+G",
                 "-mwopt",
                 "-prec", "10",
-                "--prefix", f"{subset}",
+                "--prefix", f"{subset}", # SUGGESTION: no need for an f string here
                 "--quiet"
             ]
             subprocess.run(iqtree_command)
@@ -82,12 +84,17 @@ def main(args):
         a_weight, b_weight = calculate_weights(a_tree, b_tree)
         avg_alpha = calculate_weighted_average_alpha("test_a.iqtree", "test_b.iqtree", a_weight, b_weight)
 
+        # NOTE: discuss purpose of custom nexus file with Hector
+        # if args.nexus is not provided on the command line..
+
         if not nexus_address:
             avg_mixture_weights = calculate_weighted_average_mixture_weights(
                 "test_a.iqtree", "test_b.iqtree", a_weight, b_weight
             )
-            # generate nexus file:
+            # .. generate nexus file that is called 'test_nex.nex':
             nexus_address = write_nexus_file(avg_mixture_weights, model)
+        # else, if it is provided on command line,
+        # nexus_address will have the filename as provided on the command line
 
         # second iqtree execution
         run_iqtrees(trees, alignment_address, avg_alpha, model, nexus_address, cores, a_tree.get_leaf_names())
@@ -219,12 +226,19 @@ def write_alignment_partitions(alignment, a_tree, b_tree):
         if record.id in b_leaves:
             b_alignment.append(record)
 
+    # SUGGESTION: move this to main() so reader can
+    # see explicitly which files this function creates
+    # this function then needs a 
+    # return a_alignment, b_alignment
     AlignIO.write(a_alignment, "test_a.aln", "fasta")
     AlignIO.write(b_alignment, "test_b.aln", "fasta")
 
 
 def conform_iqtree_tree(iqtree_file, ref_outgroup_leaves):
     # extracting subtree 
+    # SUGGESTION: with 'iqtree_file' do you mean the '.treefile' ?
+    # intuitively it sounds more like the '.iqtree' file
+    # so maybe chosen variable name is confusing here
     iqtree_tree = Tree(iqtree_file)
 
     # if outgroup is a single taxon
@@ -389,6 +403,9 @@ def write_nexus_file(weights, model):
 def run_iqtrees(trees, alignment_address, avg_alpha, model, nexus_file, cores, leaves):
     total_tree_count = len(trees)
 
+    # SUGGESTION:
+    # try the enumerate function, could save you two lines
+    # for i, tree in enumerate(tree, start=1):
     i = 1
     for tree in trees:
 
