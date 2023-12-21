@@ -4,7 +4,6 @@ __pycache__/
 *.png
 example_out/
 ModifiedC10NexusWith0.1Weights.txt
-*.nex
 .DS_Store
 test_*
 joran*

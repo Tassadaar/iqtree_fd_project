@@ -608,8 +608,8 @@ if __name__ == "__main__":
         "-d", "data/Hector/def",
         "-s", "data/Hector/conAB1rho60.fa",
         "-i", "0.3",
-        "-m", "LG+C10+G"
-        # "-mdef", "source.nex"
+        "-m", "WAG+ESmodel+G",
+        "-mdef", "data/Hector/MEOW6020.nex"
     ]
 
     arguments = parser.parse_args()
