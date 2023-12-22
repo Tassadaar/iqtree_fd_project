@@ -359,7 +359,6 @@ def calculate_weighted_average_alpha(a_iqtree_file, b_iqtree_file, a_weight, b_w
     return a_alpha * a_weight + b_alpha * b_weight
 
 
-# TODO: simplify search logic, be more specific
 def create_custom_nexus_file(weights, nexus_address, mixture_model, key_phrase):
     out_freqs = []
 
@@ -370,12 +369,12 @@ def create_custom_nexus_file(weights, nexus_address, mixture_model, key_phrase):
         for line in nexus_file:
 
             # skip source comment or other
-            if key_phrase in line:
+            if line.startswith(key_phrase):
                 section_found = True
                 continue
 
             # skip empty lines after begin models
-            if section_found and "frequency" in line:
+            if section_found and line.startswith("frequency"):
                 # for each line before encountering an empty line
                 # prepend fundi to frequency names
                 words = line.split()
@@ -383,7 +382,7 @@ def create_custom_nexus_file(weights, nexus_address, mixture_model, key_phrase):
                 out_freqs.append(words)
                 continue
 
-            if section_found and "model" in line:
+            if section_found and line.startswith("model"):
                 break
 
         # generate model section
