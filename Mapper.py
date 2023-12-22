@@ -94,11 +94,14 @@ def main(args):
         # if args.nexus is not provided on the command line...
         if not nexus_address:
             # .. generate nexus file that is called 'test_nex.nex':
-            nexus_address, models[1] = write_nexus_file(avg_mixture_weights, models[1])
+            nexus_address, models[1] = create_custom_nexus_file(
+                avg_mixture_weights, "data/modelmixtureCAT.nex", models[1], f"CAT-{models[1]}"
+            )
         # else, if it is provided on command line,
         else:
-            # nexus_address will have the filename as provided on the command line
-            nexus_address, models[1] = update_nexus_file(avg_mixture_weights, nexus_address, models[1])
+            nexus_address, models[1] = create_custom_nexus_file(
+                avg_mixture_weights, nexus_address, models[1], "begin models;"
+            )
 
         # second iqtree execution
         run_iqtrees(trees, alignment_address, avg_alpha, "+".join(models),
@@ -356,50 +359,8 @@ def calculate_weighted_average_alpha(a_iqtree_file, b_iqtree_file, a_weight, b_w
     return a_alpha * a_weight + b_alpha * b_weight
 
 
-def write_nexus_file(weights, mixture_model):
-    out_freqs = []
-
-    # generate frequency section
-    with open("data/modelmixtureCAT.nex", "r") as nexus_file:
-
-        for line in nexus_file:
-
-            if f"CAT-{mixture_model} profile mixture model" in line:
-                next_line = next(nexus_file)
-
-                while next_line != "\n":
-                    words = next_line.split()
-                    words[1] = f"fundi_{words[1]}"
-                    out_freqs.append(words)
-                    next_line = next(nexus_file)
-
-                break
-
-    # generate model section
-    weight_statements = []
-    new_mixture_model = f"fundi_{mixture_model}"
-
-    for category, weight in weights.items():
-        weight_statements.append(f"{new_mixture_model}pi{category}:1:{weight}")
-
-    weight_line = f"model {new_mixture_model} = FMIX{{{','.join(weight_statements)}}};"
-
-    # write to file
-    with open("nex", "w") as nex_file:
-        nex_file.write("#nexus\nbegin models;\n")
-
-        for line in out_freqs:
-            nex_file.write(" ".join(line) + "\n")
-
-        nex_file.write(weight_line + "\n")
-
-        nex_file.write("end;")
-
-    return "nex", new_mixture_model
-
-
-# TODO: consolidate this with write_nexus_file()
-def update_nexus_file(weights, nexus_address, mixture_model):
+# TODO: simplify search logic, be more specific
+def create_custom_nexus_file(weights, nexus_address, mixture_model, key_phrase):
     out_freqs = []
 
     # generate frequency section
@@ -409,7 +370,7 @@ def update_nexus_file(weights, nexus_address, mixture_model):
         for line in nexus_file:
 
             # skip source comment or other
-            if "begin models;" in line:
+            if key_phrase in line:
                 section_found = True
                 continue
 
@@ -608,8 +569,8 @@ if __name__ == "__main__":
         "-d", "data/Hector/def",
         "-s", "data/Hector/conAB1rho60.fa",
         "-i", "0.3",
-        "-m", "WAG+ESmodel+G",
-        "-mdef", "data/Hector/MEOW6020.nex"
+        "-m", "LG+fundi_C10+G",
+        "-mdef", "nex"
     ]
 
     arguments = parser.parse_args()
