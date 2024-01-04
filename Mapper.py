@@ -86,7 +86,9 @@ def main(args):
         print(f"{len(trees)} tree were generated\n")
 
         a_weight, b_weight = calculate_weights(a_tree, b_tree)
-        avg_alpha = calculate_weighted_average_alpha("test_a.iqtree", "test_b.iqtree", a_weight, b_weight)
+        avg_alpha = calculate_weighted_average_alpha(
+            "test_a.iqtree", "test_b.iqtree", a_weight, b_weight
+        )
 
         avg_mixture_weights = calculate_weighted_average_mixture_weights(
             "test_a.iqtree", "test_b.iqtree", a_weight, b_weight
@@ -291,6 +293,7 @@ def calculate_weighted_average_mixture_weights(a_iqtree_file, b_iqtree_file, a_w
 
             for line in file:
 
+                # NOTE: this will fail if the model provided does not exist
                 if "No  Component      Rate    Weight   Parameters" in line:
                     next_line = next(file)
 
@@ -309,10 +312,10 @@ def calculate_weighted_average_mixture_weights(a_iqtree_file, b_iqtree_file, a_w
     # usefulness of these safety nets questionable,
     # but doesn't hurt
     if not a_mixture_weights:
-        raise ValueError(f"Cannot extract weights, check if '{a_iqtree_file}' is formatted correctly!")
+        raise ValueError(f"Cannot extract mixture weights, check if '{a_iqtree_file}' is formatted correctly!")
 
     if not b_mixture_weights:
-        raise ValueError(f"Cannot extract weights, check if '{a_iqtree_file}' is formatted correctly!")
+        raise ValueError(f"Cannot extract mixture weights, check if '{a_iqtree_file}' is formatted correctly!")
 
     # mixture_weight = weight of the mixture model class
     # weight = weight used to calculate the weighted average
@@ -546,9 +549,10 @@ if __name__ == "__main__":
 
     # TODO: list all available models
     parser.add_argument("-m", "--model", required=False, default="LG+C10+G",
-                        help="Model to be used with iqtree")
+                        help="Model to be used with iqtree. Syntax: Rate Matrix+Mixture Model+Rate Heterogeneity. "
+                             "Default is LG+C10+G")
 
-    # TODO: improve this
+    # TODO: improve (the wording of?) this
     parser.add_argument("-i", "--increment", required=False, default="0.1",
                         help="Metric to control branch length variance, default is 0.1")
 
@@ -568,11 +572,11 @@ if __name__ == "__main__":
         "-d", "data/Hector/def",
         "-s", "data/Hector/conAB1rho60.fa",
         "-i", "0.3",
-        "-m", "LG+fundi_C10+G",
-        "-mdef", "nex"
+        "-m", "LG+C10+G"
     ]
 
     arguments = parser.parse_args()
 
     # TODO: parallelization? see notes.
+    # NOTE: think about if it is faster to run two trees on 20 cores or 10 cores each in parallel
     main(arguments)
