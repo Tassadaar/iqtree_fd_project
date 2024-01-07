@@ -5,6 +5,8 @@ import argparse
 import subprocess
 import itertools
 import re
+import time
+
 from ete3 import Tree, TreeStyle, TreeNode
 from Bio import AlignIO
 
@@ -121,9 +123,9 @@ def main(args):
     except FileNotFoundError as e:
         print(f"File not found! {e}")
 
-    finally:
-        print("\nSystem exiting...")
-        sys.exit()
+    # finally:
+    #     print("\nSystem exiting...")
+    #     sys.exit()
 
 
 def validate_alignment(tree, alignment_file):
@@ -532,6 +534,11 @@ def generate_summary(tree_count, model, increment, taxa_groups, keep):
 
     # Get a list of all filenames matching test_*.*
     # then constructs the command by appending these filenames to ["rm", "-f"].
+    # NOTE: this is cool but could easily run into compatibility issues as demonstrated on perun
+    # NOTE: should revert this back:
+    # files = glob.glob("test_*.*")
+    # if files:
+    #     subprocess.run(["rm", "-f"] + files)
     if files := glob.glob("test_*.*"):  # all hail walrus
         subprocess.run(["rm", "-f"] + files)
 
@@ -579,4 +586,11 @@ if __name__ == "__main__":
 
     # TODO: parallelization? see notes.
     # NOTE: think about if it is faster to run two trees on 20 cores or 10 cores each in parallel
+    # NOTE: 10-core runtime: 3.79295015335083
+    # NOTE: 5-core runtime: 6.795767545700073
+    # 0.790132761001587 / 7.58590030670166 * 100% = 10.4258% decrease in runtime! Tested on perun20
+    start_time = time.time()
     main(arguments)
+    end_time = time.time()
+    # NOTE: typical sequential runtime: 30.203840017318726
+    print(f"\nRuntime: {end_time - start_time}")
