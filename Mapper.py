@@ -1,4 +1,5 @@
 import glob
+import math
 import os
 import sys
 import argparse
@@ -37,6 +38,7 @@ def main(args):
         # first iqtree execution
         for subset in ["test_a", "test_b"]:
 
+            # TODO: prompt needs rework
             print(f"Running iqtree on subtree {subset}...")
             iqtree_command = [
                 "iqtree2",
@@ -425,8 +427,15 @@ def create_custom_nexus_file(weights, nexus_address, mixture_model, key_phrase):
         return "nex", new_mixture_model
 
 
-def run_iqtrees(trees, alignment_address, avg_alpha, model, nexus_file, cores, leaves):
+def run_iqtrees(trees, alignment_address, avg_alpha, model, nexus_file, all_cores, leaves):
     total_tree_count = len(trees)
+
+    if total_tree_count > all_cores:
+        cores = 1
+    else:
+        cores = math.ceil(all_cores // total_tree_count)
+
+    iqtree_commands = []
 
     for i, tree in enumerate(trees, start=1):
 
@@ -434,13 +443,13 @@ def run_iqtrees(trees, alignment_address, avg_alpha, model, nexus_file, cores, l
         # tree.render(f"test_{i}.png") not supported on perun
         tree.write(format=1, outfile=f"test_{i}.tree")
 
-        iqtree_cmd = [
+        iqtree_command = [
             "iqtree2",
             "-s", alignment_address,
             "--tree-fix", f"test_{i}.tree",
             "-m", f"{model}{{{avg_alpha}}}",
             "--mdef", nexus_file,
-            "-nt", cores,
+            "-nt", str(cores),
             "--prefix", f"test_{i}",
             "-prec", "10",
             "-blfix",
@@ -449,8 +458,16 @@ def run_iqtrees(trees, alignment_address, avg_alpha, model, nexus_file, cores, l
             "--quiet"
         ]
 
+        # TODO: prompt needs rework
         print(f"Running iqtree funDi on Tree {i} out of {total_tree_count}...")
-        subprocess.run(iqtree_cmd)
+        iqtree_commands.append(iqtree_command)
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = [executor.submit(subprocess.run, command) for command in iqtree_commands]
+
+        for future in concurrent.futures.as_completed(futures):
+            result = future.result()
+            print('Command:', result.args)
 
 
 def generate_summary(tree_count, model, increment, taxa_groups, keep):
@@ -604,7 +621,8 @@ if __name__ == "__main__":
     start_time = time.time()
     main(arguments)
     end_time = time.time()
-    # NOTE: runtime comparisons
-    #  typical sequential runtime: 30.203840017318726
-    #  with first iqtree execution parallelized: 28.021708965301514
+    # NOTE: runtime comparisons with 2 cores and 4 trees
+    #   typical sequential runtime: 30.203840017318726
+    #   with first iqtree execution parallelized: 28.021708965301514
+    #   with second iqtree execution parallelized: 22.487685680389404
     print(f"\nRuntime: {end_time - start_time}")
