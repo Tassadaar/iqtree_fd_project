@@ -1,38 +1,115 @@
-Trees generated: 4
+Trees generated: 81
 Model used: LG+fundi_C10+G
-Increment used: 0.3
-Best tree: Tree 2
-Best funDi log-likelihood: -376023.132
+Increment used: 0.1
+Best tree: Tree 17
+Best funDi log-likelihood: -375986.182
 rho: 0.596.
-Central branch length: 0.12
+Central branch length: 0.148
 
 Rooted best tree:
 
-                   /-1, 0.414917
+                   /-1, 0.4979
                   |
-     /, 0.0601696792                   /-21, 0.197827
+     /, 0.0739350837                   /-21, 0.197827
     |             |          /, 0.280364
     |             |         |         |          /-23, 0.385487
-    |              \, 0.207458         \, 0.287764
+    |              \, 0.124475         \, 0.287764
     |                       |                    \-24, 0.215816
     |                       |
     |                        \-3, 0.463403
 -, 0.0
-    |                                 /-7, 0.768084
-    |                       /, 0.334196
-    |                      |          \-8, 0.930314
-    |              /, 0.36223
-    |             |        |          /-9, 0.239741
-    |             |         \, 0.399812
-     \, 0.0601696792                  \-10, 0.248458
+    |                                  /-7, 0.768084
+    |                        /, 0.334196
+    |                       |          \-8, 0.930314
+    |              /, 0.434676
+    |             |         |          /-9, 0.239741
+    |             |          \, 0.399812
+     \, 0.0739350837                   \-10, 0.248458
                   |
                   |          /-6, 0.531478
-                   \, 0.181115
+                   \, 0.108669
                             |          /-5, 0.28259
                              \, 0.233777
                                        \-4, 0.267921
 
 The following list ranks the remaining trees based on best log-likelihood:
-funDi Log-likelihood of the tree 4: -376182.838; rho: 0.596; central branch length: 0.14
-funDi Log-likelihood of the tree 1: -376277.503; rho: 0.589; central branch length: 0.276
-funDi Log-likelihood of the tree 3: -376427.537; rho: 0.588; central branch length: 0.301
+funDi Log-likelihood of the tree 26: -375991.897; rho: 0.596; central branch length: 0.125
+funDi Log-likelihood of the tree 16: -376000.057; rho: 0.595; central branch length: 0.145
+funDi Log-likelihood of the tree 18: -376003.114; rho: 0.594; central branch length: 0.192
+funDi Log-likelihood of the tree 25: -376006.429; rho: 0.596; central branch length: 0.126
+funDi Log-likelihood of the tree 27: -376007.938; rho: 0.596; central branch length: 0.158
+funDi Log-likelihood of the tree 7: -376011.958; rho: 0.594; central branch length: 0.18
+funDi Log-likelihood of the tree 35: -376014.359; rho: 0.596; central branch length: 0.117
+funDi Log-likelihood of the tree 36: -376029.192; rho: 0.597; central branch length: 0.13
+funDi Log-likelihood of the tree 34: -376029.359; rho: 0.597; central branch length: 0.107
+funDi Log-likelihood of the tree 15: -376040.629; rho: 0.594; central branch length: 0.163
+funDi Log-likelihood of the tree 24: -376047.413; rho: 0.595; central branch length: 0.145
+funDi Log-likelihood of the tree 6: -376051.84; rho: 0.593; central branch length: 0.212
+funDi Log-likelihood of the tree 44: -376053.024; rho: 0.597; central branch length: 0.111
+funDi Log-likelihood of the tree 45: -376066.698; rho: 0.597; central branch length: 0.129
+funDi Log-likelihood of the tree 43: -376068.723; rho: 0.597; central branch length: 0.108
+funDi Log-likelihood of the tree 33: -376070.509; rho: 0.596; central branch length: 0.119
+funDi Log-likelihood of the tree 14: -376105.618; rho: 0.592; central branch length: 0.201
+funDi Log-likelihood of the tree 53: -376108.515; rho: 0.596; central branch length: 0.125
+funDi Log-likelihood of the tree 42: -376109.866; rho: 0.596; central branch length: 0.117
+funDi Log-likelihood of the tree 23: -376112.678; rho: 0.593; central branch length: 0.187
+funDi Log-likelihood of the tree 5: -376116.216; rho: 0.59; central branch length: 0.26
+funDi Log-likelihood of the tree 54: -376120.758; rho: 0.597; central branch length: 0.138
+funDi Log-likelihood of the tree 52: -376125.272; rho: 0.594; central branch length: 0.141
+funDi Log-likelihood of the tree 32: -376135.592; rho: 0.594; central branch length: 0.16
+funDi Log-likelihood of the tree 51: -376165.747; rho: 0.596; central branch length: 0.128
+funDi Log-likelihood of the tree 41: -376174.477; rho: 0.594; central branch length: 0.158
+funDi Log-likelihood of the tree 62: -376181.532; rho: 0.596; central branch length: 0.145
+funDi Log-likelihood of the tree 63: -376192.583; rho: 0.598; central branch length: 0.145
+funDi Log-likelihood of the tree 13: -376193.657; rho: 0.589; central branch length: 0.277
+funDi Log-likelihood of the tree 61: -376198.361; rho: 0.595; central branch length: 0.146
+funDi Log-likelihood of the tree 22: -376201.172; rho: 0.588; central branch length: 0.264
+funDi Log-likelihood of the tree 4: -376203.283; rho: 0.589; central branch length: 0.305
+funDi Log-likelihood of the tree 31: -376223.582; rho: 0.59; central branch length: 0.242
+funDi Log-likelihood of the tree 50: -376229.557; rho: 0.594; central branch length: 0.169
+funDi Log-likelihood of the tree 60: -376239.081; rho: 0.594; central branch length: 0.166
+funDi Log-likelihood of the tree 40: -376261.464; rho: 0.59; central branch length: 0.236
+funDi Log-likelihood of the tree 71: -376274.116; rho: 0.595; central branch length: 0.185
+funDi Log-likelihood of the tree 70: -376291.377; rho: 0.594; central branch length: 0.189
+funDi Log-likelihood of the tree 59: -376301.783; rho: 0.592; central branch length: 0.21
+funDi Log-likelihood of the tree 12: -376303.881; rho: 0.587; central branch length: 0.344
+funDi Log-likelihood of the tree 21: -376311.063; rho: 0.588; central branch length: 0.312
+funDi Log-likelihood of the tree 49: -376314.944; rho: 0.591; central branch length: 0.226
+funDi Log-likelihood of the tree 69: -376331.467; rho: 0.594; central branch length: 0.206
+funDi Log-likelihood of the tree 30: -376333.082; rho: 0.588; central branch length: 0.295
+funDi Log-likelihood of the tree 39: -376369.816; rho: 0.588; central branch length: 0.295
+funDi Log-likelihood of the tree 58: -376385.177; rho: 0.59; central branch length: 0.257
+funDi Log-likelihood of the tree 68: -376392.529; rho: 0.591; central branch length: 0.248
+funDi Log-likelihood of the tree 81: -376397.466; rho: 0.593; central branch length: 0.282
+funDi Log-likelihood of the tree 79: -376407.84; rho: 0.592; central branch length: 0.263
+funDi Log-likelihood of the tree 48: -376421.626; rho: 0.588; central branch length: 0.311
+funDi Log-likelihood of the tree 20: -376445.032; rho: 0.584; central branch length: 0.436
+funDi Log-likelihood of the tree 78: -376446.897; rho: 0.591; central branch length: 0.275
+funDi Log-likelihood of the tree 29: -376466.251; rho: 0.585; central branch length: 0.407
+funDi Log-likelihood of the tree 67: -376473.537; rho: 0.589; central branch length: 0.311
+funDi Log-likelihood of the tree 57: -376489.327; rho: 0.587; central branch length: 0.349
+funDi Log-likelihood of the tree 38: -376501.517; rho: 0.585; central branch length: 0.415
+funDi Log-likelihood of the tree 77: -376505.788; rho: 0.589; central branch length: 0.317
+funDi Log-likelihood of the tree 47: -376550.924; rho: 0.585; central branch length: 0.42
+funDi Log-likelihood of the tree 66: -376574.443; rho: 0.587; central branch length: 0.374
+funDi Log-likelihood of the tree 76: -376583.538; rho: 0.587; central branch length: 0.385
+funDi Log-likelihood of the tree 10: -376600.241; rho: 0.579; central branch length: 0.611
+funDi Log-likelihood of the tree 1: -376606.475; rho: 0.579; central branch length: 0.634
+funDi Log-likelihood of the tree 19: -376607.711; rho: 0.581; central branch length: 0.549
+funDi Log-likelihood of the tree 56: -376615.369; rho: 0.584; central branch length: 0.45
+funDi Log-likelihood of the tree 55: -376769.113; rho: 0.578; central branch length: 0.633
+funDi Log-likelihood of the tree 74: -376796.542; rho: 0.581; central branch length: 0.578
+funDi Log-likelihood of the tree 64: -376844.193; rho: 0.579; central branch length: 0.647
+funDi Log-likelihood of the tree 73: -376937.908; rho: 0.578; central branch length: 0.72
+funDi Log-likelihood of the tree 9: -377445.703; rho: 0.698; central branch length: 2.216
+funDi Log-likelihood of the tree 80: -377450.965; rho: 0.688; central branch length: 1.949
+funDi Log-likelihood of the tree 11: -377477.461; rho: 0.673; central branch length: 2.299
+funDi Log-likelihood of the tree 65: -377600.56; rho: 0.691; central branch length: 1.946
+funDi Log-likelihood of the tree 8: -377688.176; rho: 0.638; central branch length: 3.796
+funDi Log-likelihood of the tree 3: -377754.496; rho: 0.652; central branch length: 3.49
+funDi Log-likelihood of the tree 75: -377817.124; rho: 0.651; central branch length: 3.252
+funDi Log-likelihood of the tree 37: -378753.064; rho: 0.32; central branch length: 7.182
+funDi Log-likelihood of the tree 28: -378837.351; rho: 0.311; central branch length: 7.463
+funDi Log-likelihood of the tree 46: -378854.134; rho: 0.314; central branch length: 7.544
+funDi Log-likelihood of the tree 72: -379075.574; rho: 0.26; central branch length: 6.744
+funDi Log-likelihood of the tree 2: -379112.508; rho: 0.27; central branch length: 7.569
