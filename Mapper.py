@@ -38,7 +38,6 @@ def main(args):
         # first iqtree execution
         for subset in ["test_a", "test_b"]:
 
-            # TODO: prompt needs rework
             iqtree_command = [
                 "iqtree2",
                 # NOTE: this is currently slightly wasteful, if the number of cores is odd then the second command
@@ -56,7 +55,6 @@ def main(args):
             if nexus_address:
                 iqtree_command = iqtree_command + ["--mdef", nexus_address]
 
-            print(f"Generating command for subtree {subset[-1]}...")
             iqtree_commands.append(iqtree_command)
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
@@ -64,7 +62,9 @@ def main(args):
 
             for command in iqtree_commands:
                 print(f"Running iqtree funDi for Tree {command[4][5]} out of 2")
-                futures.append(executor.submit(subprocess.run, command))
+                futures.append(executor.submit(subprocess.run, command, stderr=subprocess.DEVNULL))
+
+            print()  # divider
 
             for future in concurrent.futures.as_completed(futures):
                 result = future.result()
@@ -106,6 +106,7 @@ def main(args):
         print(f"{len(trees)} tree were generated\n")
 
         a_weight, b_weight = calculate_weights(a_tree, b_tree)
+
         avg_alpha = calculate_weighted_average_alpha(
             "test_a.iqtree", "test_b.iqtree", a_weight, b_weight
         )
@@ -113,6 +114,7 @@ def main(args):
         avg_mixture_weights = calculate_weighted_average_mixture_weights(
             "test_a.iqtree", "test_b.iqtree", a_weight, b_weight
         )
+
         # if args.nexus is not provided on the command line...
         if not nexus_address:
             # .. generate nexus file that is called 'test_nex.nex':
@@ -266,6 +268,7 @@ def conform_iqtree_tree(iqtree_treefile, ref_outgroup_leaves):
     # if outgroup is a single taxon
     if len(ref_outgroup_leaves) == 1:
         iqtree_tree.set_outgroup(ref_outgroup_leaves[0])
+
         return iqtree_tree
 
     # if outgroup is multiple taxa
@@ -439,43 +442,38 @@ def run_iqtrees(trees, alignment_address, avg_alpha, model, nexus_file, all_core
     else:
         cores = math.ceil(all_cores // total_tree_count)
 
-    iqtree_commands = []
-
-    for i, tree in enumerate(trees, start=1):
-
-        # render image of stitched-together-tree
-        # tree.render(f"test_{i}.png") not supported on perun
-        tree.write(format=1, outfile=f"test_{i}.tree")
-
-        iqtree_command = [
-            "iqtree2",
-            "-s", alignment_address,
-            "--tree-fix", f"test_{i}.tree",
-            "-m", f"{model}{{{avg_alpha}}}",
-            "--mdef", nexus_file,
-            "-nt", str(cores),
-            "--prefix", f"test_{i}",
-            "-prec", "10",
-            "-blfix",
-            "--fundi", f"{','.join(leaves)},estimate",
-            "-redo",
-            "--quiet"
-        ]
-
-        # TODO: prompt needs rework
-        print(f"Generating iqtree funDi command for Tree {i} out of {total_tree_count}...")
-        iqtree_commands.append(iqtree_command)
-
     with concurrent.futures.ThreadPoolExecutor(max_workers=all_cores) as executor:
         futures = []
 
-        for command in iqtree_commands:
-            print(f"Running iqtree funDi for Tree {command[4][5]} out of {total_tree_count}")
-            futures.append(executor.submit(subprocess.run, command))
+        for index, tree in enumerate(trees, start=1):
+            formatted_index = f"{index:02d}"
+            # render image of stitched-together-tree
+            # tree.render(f"test_{i}.png") not supported on perun
+            tree.write(format=1, outfile=f"test_{formatted_index}.tree")
+
+            iqtree_command = [
+                "iqtree2",
+                "-s", alignment_address,
+                "--tree-fix", f"test_{formatted_index}.tree",
+                "-m", f"{model}{{{avg_alpha}}}",
+                "--mdef", nexus_file,
+                "-nt", str(cores),
+                "--prefix", f"test_{formatted_index}",
+                "-prec", "10",
+                "-blfix",
+                "--fundi", f"{','.join(leaves)},estimate",
+                "-redo",
+                "--quiet"
+            ]
+
+            print(f"Running iqtree funDi for Tree {formatted_index} out of {total_tree_count}")
+            futures.append(executor.submit(subprocess.run, iqtree_command, stderr=subprocess.DEVNULL))
+
+        print()  # divider
 
         for future in concurrent.futures.as_completed(futures):
             result = future.result()
-            print(f"Completed running Tree {result.args[4][5]}.")
+            print(f"Completed running Tree {result.args[4][5:7]}.")
 
 
 def generate_summary(tree_count, model, increment, taxa_groups, keep):
@@ -483,9 +481,10 @@ def generate_summary(tree_count, model, increment, taxa_groups, keep):
     # get tree_properties
     tree_properties = []
 
-    for i in range(1, tree_count + 1):
+    for index in range(1, tree_count + 1):
+        formatted_index = f"{index:02d}"
 
-        with open(f"test_{i}.log", "r") as iqtree_file:
+        with open(f"test_{formatted_index}.log", "r") as iqtree_file:
 
             for line in iqtree_file:
 
@@ -504,7 +503,7 @@ def generate_summary(tree_count, model, increment, taxa_groups, keep):
                     log_likelihood = float(words[2])
                     break
 
-        tree_properties.append((i, log_likelihood, rho_value, central_branch_length))
+        tree_properties.append((formatted_index, log_likelihood, rho_value, central_branch_length))
 
     # sort the trees based on largest funDi log-likelihood
     sorted_tree_properties = sorted(tree_properties, key=lambda attr_tuple: attr_tuple[1], reverse=True)
@@ -538,6 +537,7 @@ def generate_summary(tree_count, model, increment, taxa_groups, keep):
         summary_file.write(f"Increment used: {increment}\n")
 
         best_index = sorted_tree_properties[0][0]
+
         summary_file.write(
             f"Best tree: Tree {best_index}\n"
             f"Best funDi log-likelihood: {sorted_tree_properties[0][1]}\n"
@@ -550,14 +550,13 @@ def generate_summary(tree_count, model, increment, taxa_groups, keep):
         # print tree with branch lengths
         summary_file.write(f"{best_tree.get_ascii(attributes=['name', 'dist'], show_internal=True)}\n\n")
         # summary_file.write(f"See \"test_{best_tree_index}.png\" for a tree illustration.\n\n")
-
         summary_file.write("The following list ranks the remaining trees based on best log-likelihood:\n")
 
-        for i in range(1, len(sorted_tree_properties)):
-            summary_file.write(f"funDi Log-likelihood of the tree {sorted_tree_properties[i][0]}: "
-                               f"{sorted_tree_properties[i][1]}; "
-                               f"rho: {sorted_tree_properties[i][2]}; "
-                               f"central branch length: {sorted_tree_properties[i][3]}\n")
+        for index in range(1, len(sorted_tree_properties)):
+            summary_file.write(f"funDi Log-likelihood of the tree {sorted_tree_properties[index][0]}: "
+                               f"{sorted_tree_properties[index][1]}; "
+                               f"rho: {sorted_tree_properties[index][2]}; "
+                               f"central branch length: {sorted_tree_properties[index][3]}\n")
 
     print("Summary generated under \"summary.txt\".")
 
@@ -615,13 +614,12 @@ if __name__ == "__main__":
         "-te", "data/Hector/TAB",
         "-d", "data/Hector/def",
         "-s", "data/Hector/conAB1rho60.fa",
-        "-i", "0.1",
+        "-i", "0.3",
         "-m", "LG+C10+G"
     ]
 
     arguments = parser.parse_args()
 
-    # TODO: fix parallelization, it currently uses all available cores instead of the ones allocated
     # NOTE: think about if it is faster to run two trees on 20 cores or 10 cores each in parallel
     #   10-core runtime: 3.79295015335083
     #   5-core runtime: 6.795767545700073
