@@ -36,13 +36,18 @@ def main(args):
         iqtree_commands = []
 
         # first iqtree execution
+        if all_cores > 2:
+            cores = all_cores // 2
+        else:
+            cores = 1
+
         for subset in ["test_a", "test_b"]:
 
             iqtree_command = [
                 "iqtree2",
                 # NOTE: this is currently slightly wasteful, if the number of cores is odd then the second command
                 #   should receive an additional core
-                "-nt", str(all_cores // 2),
+                "-nt", str(cores),
                 "-s", f"{subset}.aln",
                 "-te", f"{subset}.newick",
                 "-mwopt",
@@ -437,10 +442,10 @@ def create_custom_nexus_file(weights, nexus_address, mixture_model, key_phrase):
 def run_iqtrees(trees, alignment_address, avg_alpha, model, nexus_file, all_cores, leaves):
     total_tree_count = len(trees)
 
-    if total_tree_count > all_cores:
-        cores = 1
-    else:
+    if all_cores > total_tree_count:
         cores = math.ceil(all_cores // total_tree_count)
+    else:
+        cores = 1
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=all_cores) as executor:
         futures = []
