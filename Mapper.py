@@ -122,7 +122,7 @@ def main(args):
 
         # if args.nexus is not provided on the command line...
         if not nexus_address:
-            # .. generate nexus file that is called 'test_nex.nex':
+            # ... generate nexus file that is called 'test_nex.nex':
             nexus_address, models[1] = create_custom_nexus_file(
                 avg_mixture_weights, "data/modelmixtureCAT.nex", models[1], f"CAT-{models[1]}"
             )
@@ -508,6 +508,11 @@ def generate_summary(tree_count, model, increment, taxa_groups, keep):
                     log_likelihood = float(words[2])
                     break
 
+        # this is a problem with large datasets discovered and debugged on perun
+        # TODO: do not bother the user about this, get them to input allocated memory and the program will deal with it
+        if not log_likelihood:
+            raise NameError("Insufficient memory allocation!")
+
         tree_properties.append((formatted_index, log_likelihood, rho_value, central_branch_length))
 
     # sort the trees based on largest funDi log-likelihood
@@ -576,11 +581,10 @@ def generate_summary(tree_count, model, increment, taxa_groups, keep):
     # Get a list of all filenames matching test_*.*
     # then constructs the command by appending these filenames to ["rm", "-f"].
     # NOTE: this is cool but could easily run into compatibility issues as demonstrated on perun
-    # NOTE: should revert this back:
-    # files = glob.glob("test_*.*")
-    # if files:
+    # if files := glob.glob("test_*.*"):  # all hail walrus
     #     subprocess.run(["rm", "-f"] + files)
-    if files := glob.glob("test_*.*"):  # all hail walrus
+    files = glob.glob("test_*.*")
+    if files:
         subprocess.run(["rm", "-f"] + files)
 
 
