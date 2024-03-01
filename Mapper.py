@@ -22,6 +22,7 @@ def main(args):
         models = args.model.split("+")  # syntax: Rate Matrix+Mixture Model+Rate Heterogeneity
         nexus_address = args.nexus
         all_cores = int(args.cores)  # total number of cores allocated to this program
+        memory = int(args.memory)
         a_tree, b_tree = get_ref_subtrees(master_tree, defined_groups)
 
         # write subtrees into newick files
@@ -134,7 +135,7 @@ def main(args):
 
         # second iqtree execution
         run_iqtrees(trees, alignment_address, avg_alpha, "+".join(models),
-                    nexus_address, all_cores, a_tree.get_leaf_names())
+                    nexus_address, all_cores, memory, a_tree.get_leaf_names())
 
         # To get the number of trees generated, we take number of proportions to the power of 2
         generate_summary(len(trees), "+".join(models), args.increment, defined_groups, args.keep)
@@ -439,15 +440,29 @@ def create_custom_nexus_file(weights, nexus_address, mixture_model, key_phrase):
         return "nex", new_mixture_model
 
 
-def run_iqtrees(trees, alignment_address, avg_alpha, model, nexus_file, all_cores, leaves):
-    total_tree_count = len(trees)
+def run_iqtrees(trees, alignment_address, avg_alpha, model, nexus_file, all_cores, memory, leaves):
 
-    if all_cores > total_tree_count:
-        cores = math.ceil(all_cores // total_tree_count)
+    def get_memory_requirement(log_file):
+
+        if not os.path.isfile(log_file):
+            raise FileNotFoundError(f"'{log_file}' does not exist!")
+
+        with open(log_file, "r") as file:
+
+            for line in file:
+
+                if "NOTE: " in line:
+                    return int(line.split(" ")[1])
+
+    # get the sum of memory requirements for a and b, double the sum and ceiling convert to gigabytes
+    mem_req = math.ceil((get_memory_requirement("test_a.log") + get_memory_requirement("test_b.log")) * 0.002)
+
+    if all_cores < memory / mem_req:
+        max_workers = all_cores
     else:
-        cores = 1
+        max_workers = int(memory / mem_req)
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=all_cores) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = []
 
         for index, tree in enumerate(trees, start=1):
@@ -462,7 +477,7 @@ def run_iqtrees(trees, alignment_address, avg_alpha, model, nexus_file, all_core
                 "--tree-fix", f"test_{formatted_index}.tree",
                 "-m", f"{model}{{{avg_alpha}}}",
                 "--mdef", nexus_file,
-                "-nt", str(cores),
+                "-nt", "1",
                 "--prefix", f"test_{formatted_index}",
                 "-prec", "10",
                 "-blfix",
@@ -471,7 +486,7 @@ def run_iqtrees(trees, alignment_address, avg_alpha, model, nexus_file, all_core
                 "--quiet"
             ]
 
-            print(f"Running iqtree funDi for Tree {formatted_index} out of {total_tree_count}")
+            print(f"Running iqtree funDi for Tree {formatted_index} out of {len(trees)}")
             futures.append(executor.submit(subprocess.run, iqtree_command, stderr=subprocess.DEVNULL))
 
         print()  # divider
@@ -614,6 +629,9 @@ if __name__ == "__main__":
     parser.add_argument("-nt", "--cores", required=False, default="2",
                         help="Number of CPU cores to use")
 
+    parser.add_argument("-mem", "--memory", required=False, default="8",
+                        help="Amount of memory in gigabytes to use")
+
     parser.add_argument("-k", "--keep", required=False, action="store_true",
                         help="Keeps files associated with trees which are not the best")
 
@@ -624,7 +642,8 @@ if __name__ == "__main__":
         "-d", "data/Hector/def",
         "-s", "data/Hector/conAB1rho60.fa",
         "-i", "0.3",
-        "-m", "LG+C10+G"
+        "-m", "LG+C10+G",
+        "-k"
     ]
 
     arguments = parser.parse_args()
@@ -641,3 +660,4 @@ if __name__ == "__main__":
     #   with first iqtree execution parallelized: 28.021708965301514
     #   with second iqtree execution parallelized: 22.487685680389404
     print(f"\nRuntime: {end_time - start_time}")
+
