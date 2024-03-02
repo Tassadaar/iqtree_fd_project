@@ -455,7 +455,7 @@ def run_iqtrees(trees, alignment_address, avg_alpha, model, nexus_file, all_core
                     return int(line.split(" ")[1])
 
     # get the sum of memory requirements for a and b, double the sum and ceiling convert to gigabytes
-    mem_req = math.ceil((get_memory_requirement("test_a.log") + get_memory_requirement("test_b.log")) * 0.002)
+    mem_req = (get_memory_requirement("test_a.log") + get_memory_requirement("test_b.log")) * 0.002
 
     if all_cores < memory / mem_req:
         max_workers = all_cores
