@@ -454,8 +454,8 @@ def run_iqtrees(trees, alignment_address, avg_alpha, model, nexus_file, all_core
                 if "NOTE: " in line:
                     return int(line.split(" ")[1])
 
-    # get the sum of memory requirements for a and b, give a 20% buffer and convert to gigabytes
-    mem_req = (get_memory_requirement("test_a.log") + get_memory_requirement("test_b.log")) * 0.0012
+    # get the sum of memory requirements for a and b, give a 5% buffer and convert to gigabytes
+    mem_req = (get_memory_requirement("test_a.log") + get_memory_requirement("test_b.log")) * 0.00105
 
     if all_cores < memory / mem_req:
         max_workers = all_cores
