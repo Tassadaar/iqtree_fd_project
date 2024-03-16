@@ -481,7 +481,9 @@ def run_iqtrees(trees, alignment_address, avg_alpha, model, nexus_file, all_core
         iqtree_commands[formatted_index] = iqtree_command
 
     # get the memory requirement for a reconstructed tree, convert to gigabytes
+    print(f"Running iqtree funDi for Tree 01 out of {len(trees)} and determining memory requirement.\n")
     subprocess.run(iqtree_commands.pop("01"), stderr=subprocess.DEVNULL)
+    print("Completed running Tree 01 and memory determination.\n")
     mem_req = get_memory_requirement("test_01.log") * 0.001
 
     if all_cores < memory / mem_req:
@@ -492,8 +494,8 @@ def run_iqtrees(trees, alignment_address, avg_alpha, model, nexus_file, all_core
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = []
 
-        for index, iqtree_command in iqtree_commands:
-            print(f"Running iqtree funDi for Tree {index} out of {len(trees)}")
+        for index, iqtree_command in iqtree_commands.items():
+            print(f"Running iqtree funDi for Tree {index} out of {len(trees)} in parallel.")
             futures.append(executor.submit(subprocess.run, iqtree_command, stderr=subprocess.DEVNULL))
 
         print()  # divider
