@@ -533,7 +533,6 @@ def generate_summary(tree_count, model, increment, taxa_groups, keep):
                     break
 
         # this is a problem with large datasets discovered and debugged on perun
-        # TODO: do not bother the user about this, get them to input allocated memory and the program will deal with it
         if not log_likelihood:
             raise NameError("Insufficient memory allocation!")
 
@@ -604,9 +603,6 @@ def generate_summary(tree_count, model, increment, taxa_groups, keep):
 
     # Get a list of all filenames matching test_*.*
     # then constructs the command by appending these filenames to ["rm", "-f"].
-    # NOTE: this is cool but could easily run into compatibility issues as demonstrated on perun
-    # if files := glob.glob("test_*.*"):  # all hail walrus
-    #     subprocess.run(["rm", "-f"] + files)
     files = glob.glob("test_*.*")
     if files:
         subprocess.run(["rm", "-f"] + files)
@@ -657,16 +653,8 @@ if __name__ == "__main__":
 
     arguments = parser.parse_args()
 
-    # NOTE: think about if it is faster to run two trees on 20 cores or 10 cores each in parallel
-    #   10-core runtime: 3.79295015335083
-    #   5-core runtime: 6.795767545700073
-    # 0.790132761001587 / 7.58590030670166 * 100% = 10.4258% decrease in runtime! Tested on perun20
     start_time = time.time()
     main(arguments)
     end_time = time.time()
-    # NOTE: runtime comparisons with 2 cores and 4 trees
-    #   typical sequential runtime: 30.203840017318726
-    #   with first iqtree execution parallelized: 28.021708965301514
-    #   with second iqtree execution parallelized: 22.487685680389404
     print(f"\nRuntime: {end_time - start_time}")
 
