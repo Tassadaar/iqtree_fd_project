@@ -466,15 +466,18 @@ def run_iqtrees(trees, alignment_address, avg_alpha, model, nexus_file, all_core
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = []
 
+        # running iqtree funDi here by submitting subprocess to executor
         for index, iqtree_command in iqtree_commands.items():
             print(f"Running iqtree funDi for Tree {index} out of {len(trees)} in parallel.")
             futures.append(executor.submit(subprocess.run, iqtree_command, stderr=subprocess.DEVNULL))
 
         print()  # divider
 
+        # obtaining confirmation of completion
         for future in concurrent.futures.as_completed(futures):
             result = future.result()
-            print(f"Completed running Tree {result.args[4][5:7]}.")
+            tree_index = result.args[4][5:7]
+            print(f"Completed running Tree {tree_index}.")
 
 
 def generate_summary(tree_count, model, increment, taxa_groups, keep):
