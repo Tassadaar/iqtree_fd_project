@@ -20,8 +20,6 @@ def main(args):
         defined_groups = validate_def_file(master_tree, args.definition)
         models = args.model.split("+")  # syntax: Rate Matrix+Mixture Model+Rate Heterogeneity
         nexus_address = args.nexus
-        all_cores = int(args.cores)  # total number of cores allocated to this program
-        memory = int(args.memory)
         a_tree, b_tree = get_ref_subtrees(master_tree, defined_groups)
 
         # write subtrees into newick files
@@ -37,7 +35,7 @@ def main(args):
 
             iqtree_command = [
                 "iqtree2",
-                "-nt", f"{all_cores}",
+                "-nt", f"{args.cores}",
                 "-s", f"{subset}.aln",
                 "-te", f"{subset}.newick",
                 "-mwopt",
@@ -113,7 +111,7 @@ def main(args):
 
         # second iqtree execution
         run_iqtrees(trees, alignment_address, avg_alpha, "+".join(models),
-                    nexus_address, all_cores, memory, a_tree.get_leaf_names())
+                    nexus_address, args.cores, args.memory, a_tree.get_leaf_names())
 
         # To get the number of trees generated, we take number of proportions to the power of 2
         generate_summary(len(trees), "+".join(models), args.increment, defined_groups, args.keep)
@@ -605,10 +603,10 @@ if __name__ == "__main__":
     parser.add_argument("-mdef", "--nexus", required=False, default=None,
                         help="Nexus file to be used with iqtree")
 
-    parser.add_argument("-nt", "--cores", required=False, default="2",
+    parser.add_argument("-nt", "--cores", required=False, type=int, default=2,
                         help="Number of CPU cores to use")
 
-    parser.add_argument("-mem", "--memory", required=False, default="8",
+    parser.add_argument("-mem", "--memory", required=False, type=int, default=8,
                         help="Amount of memory in gigabytes to use")
 
     parser.add_argument("-k", "--keep", required=False, action="store_true",
