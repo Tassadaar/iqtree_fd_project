@@ -8,7 +8,6 @@ import concurrent.futures
 import itertools
 import re
 import time
-
 from ete3 import Tree, TreeStyle, TreeNode
 from Bio import AlignIO
 
@@ -464,11 +463,7 @@ def run_iqtrees(trees, alignment_address, avg_alpha, model, nexus_file, all_core
     subprocess.run(iqtree_commands.pop("01"), stderr=subprocess.DEVNULL)
     print("Completed running Tree 01 and memory determination.\n")
     mem_req = get_memory_requirement("test_01.log") * 0.001
-
-    if all_cores < memory / mem_req:
-        max_workers = all_cores
-    else:
-        max_workers = int(memory / mem_req)
+    max_workers = all_cores if all_cores < memory / mem_req else int(memory / mem_req)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = []
