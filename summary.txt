@@ -2,15 +2,15 @@ Trees generated: 4
 Model used: LG+fundi_C10+G
 Increment used: 0.3
 Best tree: Tree 02
-Best funDi log-likelihood: -376023.132
-rho: 0.596.
-Central branch length: 0.12
+Best funDi log-likelihood: -376023.111
+rho: 0.597.
+Central branch length: 0.118
 
 Rooted best tree:
 
                    /-1, 0.414917
                   |
-     /, 0.0601696792                   /-21, 0.197827
+     /, 0.0589494427                   /-21, 0.197827
     |             |          /, 0.280364
     |             |         |         |          /-23, 0.385487
     |              \, 0.207458         \, 0.287764
@@ -24,7 +24,7 @@ Rooted best tree:
     |              /, 0.36223
     |             |        |          /-9, 0.239741
     |             |         \, 0.399812
-     \, 0.0601696792                  \-10, 0.248458
+     \, 0.0589494427                  \-10, 0.248458
                   |
                   |          /-6, 0.531478
                    \, 0.181115
@@ -33,6 +33,6 @@ Rooted best tree:
                                        \-4, 0.267921
 
 The following list ranks the remaining trees based on best log-likelihood:
-funDi Log-likelihood of the tree 04: -376182.838; rho: 0.596; central branch length: 0.14
-funDi Log-likelihood of the tree 01: -376277.503; rho: 0.589; central branch length: 0.276
-funDi Log-likelihood of the tree 03: -376427.537; rho: 0.588; central branch length: 0.301
+funDi Log-likelihood of the tree 04: -376183.458; rho: 0.593; central branch length: 0.164
+funDi Log-likelihood of the tree 01: -376277.504; rho: 0.589; central branch length: 0.276
+funDi Log-likelihood of the tree 03: -376427.535; rho: 0.588; central branch length: 0.3
