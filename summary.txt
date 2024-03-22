@@ -34,5 +34,5 @@ Rooted best tree:
 
 The following list ranks the remaining trees based on best log-likelihood:
 funDi Log-likelihood of the tree 04: -376183.458; rho: 0.593; central branch length: 0.164
-funDi Log-likelihood of the tree 01: -376277.504; rho: 0.589; central branch length: 0.276
+funDi Log-likelihood of the tree 01: -376277.503; rho: 0.589; central branch length: 0.276
 funDi Log-likelihood of the tree 03: -376427.535; rho: 0.588; central branch length: 0.3

@@ -458,6 +458,7 @@ def run_iqtrees(trees, alignment_address, avg_alpha, model, nexus_file, all_core
 
     # get the memory requirement for a reconstructed tree, convert to gigabytes
     print(f"Running iqtree funDi for Tree 01 out of {len(trees)} and determining memory requirement.\n")
+    iqtree_commands["01"][10] = str(all_cores)
     subprocess.run(iqtree_commands.pop("01"), stderr=subprocess.DEVNULL)
     print("Completed running Tree 01 and memory determination.\n")
     mem_req = get_memory_requirement("test_01.log") * 0.001
