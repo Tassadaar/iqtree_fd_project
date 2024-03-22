@@ -430,22 +430,51 @@ def run_iqtrees(trees, alignment_address, avg_alpha, model, nexus_file, all_core
                 if "NOTE: " in line:
                     return int(line.split(" ")[1])
 
-    # generate iqtree commands
-    iqtree_commands = {}
+    # generate first iqtree command
+    trees[0].write(format=1, outfile=f"test_01.tree")
+    first_iqtree_command = [
+        "iqtree2",
+        "-s", alignment_address,
+        "--tree-fix", f"test_01.tree",
+        "-m", f"{model}{{{avg_alpha}}}",
+        "--mdef", nexus_file,
+        "-nt", f"{all_cores}",
+        "--prefix", f"test_01",
+        "-prec", "10",
+        "-blfix",
+        "--fundi", f"{','.join(leaves)},estimate",
+        "-redo",
+        "--quiet"
+    ]
 
-    for index, tree in enumerate(trees, start=1):
+    # get the memory requirement for a reconstructed tree, convert to gigabytes
+    print(f"Running iqtree funDi for Tree 01 out of {len(trees)} and determining memory requirement.\n")
+    subprocess.run(first_iqtree_command, stderr=subprocess.DEVNULL)
+    print("Completed running Tree 01 and memory determination.\n")
+    mem_req = get_memory_requirement("test_01.log") * 0.001
+
+    # determine the max numbers of concurrent processes and their cores
+    if all_cores < memory / mem_req:
+        max_workers = all_cores
+        cores = 1
+    else:
+        max_workers = int(memory / mem_req)
+        cores = int(all_cores / max_workers)
+
+    # generate the rest of the iqtree commands
+    iqtree_commands = {}
+    for index, tree in enumerate(trees[1:], start=2):
         formatted_index = f"{index:02d}"
         # render image of stitched-together-tree
         # tree.render(f"test_{i}.png") not supported on perun
         tree.write(format=1, outfile=f"test_{formatted_index}.tree")
-
         iqtree_command = [
             "iqtree2",
             "-s", alignment_address,
             "--tree-fix", f"test_{formatted_index}.tree",
             "-m", f"{model}{{{avg_alpha}}}",
             "--mdef", nexus_file,
-            "-nt", "1",
+            "-nt", f"{cores}",
             "--prefix", f"test_{formatted_index}",
             "-prec", "10",
             "-blfix",
@@ -455,14 +484,6 @@ def run_iqtrees(trees, alignment_address, avg_alpha, model, nexus_file, all_core
         ]
 
         iqtree_commands[formatted_index] = iqtree_command
-
-    # get the memory requirement for a reconstructed tree, convert to gigabytes
-    print(f"Running iqtree funDi for Tree 01 out of {len(trees)} and determining memory requirement.\n")
-    iqtree_commands["01"][10] = str(all_cores)
-    subprocess.run(iqtree_commands.pop("01"), stderr=subprocess.DEVNULL)
-    print("Completed running Tree 01 and memory determination.\n")
-    mem_req = get_memory_requirement("test_01.log") * 0.001
-    max_workers = all_cores if all_cores < memory / mem_req else int(memory / mem_req)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = []
