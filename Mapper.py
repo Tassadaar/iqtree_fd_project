@@ -109,9 +109,13 @@ def main(args):
                 avg_mixture_weights, nexus_address, models[1], "begin models;"
             )
 
-        # second iqtree execution
-        run_iqtrees(trees, alignment_address, avg_alpha, "+".join(models),
-                    nexus_address, args.cores, args.memory, a_tree.get_leaf_names())
+        # second iqtree (funDi) execution
+        if args.parallelization:
+            run_iqtrees_par(trees, alignment_address, avg_alpha, "+".join(models), nexus_address, args.cores,
+                            args.memory, a_tree.get_leaf_names())
+        else:
+            run_iqtrees_seq(trees, alignment_address, avg_alpha, "+".join(models), nexus_address, args.cores,
+                            a_tree.get_leaf_names())
 
         # To get the number of trees generated, we take number of proportions to the power of 2
         generate_summary(len(trees), "+".join(models), args.increment, defined_groups, args.keep)
@@ -416,7 +420,36 @@ def create_custom_nexus_file(weights, nexus_address, mixture_model, key_phrase):
         return "nex", new_mixture_model
 
 
-def run_iqtrees(trees, alignment_address, avg_alpha, model, nexus_file, all_cores, memory, leaves):
+def run_iqtrees_seq(trees, alignment_address, avg_alpha, model, nexus_file, cores, leaves):
+    total_tree_count = len(trees)
+
+    for index, tree in enumerate(trees, start=1):
+        formatted_index = f"{index:02d}"
+        # render image of stitched-together-tree
+        # tree.render(f"test_{i}.png") not supported on perun
+        tree.write(format=1, outfile=f"test_{formatted_index}.tree")
+
+        iqtree_cmd = [
+            "iqtree2",
+            "-s", alignment_address,
+            "--tree-fix", f"test_{formatted_index}.tree",
+            "-m", f"{model}{{{avg_alpha}}}",
+            "--mdef", nexus_file,
+            "-nt", f"{cores}",
+            "--prefix", f"test_{formatted_index}",
+            "-prec", "10",
+            "-blfix",
+            "--fundi", f"{','.join(leaves)},estimate",
+            "-redo",
+            "--quiet"
+        ]
+
+        print(f"Running iqtree funDi on Tree {formatted_index} out of {total_tree_count}...\n")
+        subprocess.run(iqtree_cmd, stderr=subprocess.DEVNULL)
+        print(f"Completed running Tree {formatted_index}.\n")
+
+
+def run_iqtrees_par(trees, alignment_address, avg_alpha, model, nexus_file, all_cores, memory, leaves):
 
     def get_memory_requirement(log_file):
 
@@ -490,7 +523,7 @@ def run_iqtrees(trees, alignment_address, avg_alpha, model, nexus_file, all_core
 
         # running iqtree funDi here by submitting subprocess to executor
         for index, iqtree_command in iqtree_commands.items():
-            print(f"Running iqtree funDi for Tree {index} out of {len(trees)} in parallel.")
+            print(f"Running iqtree funDi for Tree {index} out of {len(trees)} in parallel...")
             futures.append(executor.submit(subprocess.run, iqtree_command, stderr=subprocess.DEVNULL))
 
         print()  # divider
@@ -500,6 +533,9 @@ def run_iqtrees(trees, alignment_address, avg_alpha, model, nexus_file, all_core
             result = future.result()
             tree_index = result.args[4][5:7]
             print(f"Completed running Tree {tree_index}.")
+
+    # delimiter
+    print()
 
 
 def generate_summary(tree_count, model, increment, taxa_groups, keep):
@@ -558,7 +594,7 @@ def generate_summary(tree_count, model, increment, taxa_groups, keep):
     best_tree.write(format=1, outfile=f"test_{sorted_tree_properties[0][0]}.treefile")
 
     # print to summary file
-    print("\nGenerating summary...\n")
+    print("Generating summary...\n")
 
     with open("summary.txt", "w") as summary_file:
 
@@ -634,6 +670,9 @@ if __name__ == "__main__":
     parser.add_argument("-mem", "--memory", required=False, type=int, default=8,
                         help="Amount of memory in gigabytes to use")
 
+    parser.add_argument("-par", "--parallelization", required=False, action="store_true",
+                        help="Run the funDi analyses in parallel")
+
     parser.add_argument("-k", "--keep", required=False, action="store_true",
                         help="Keeps files associated with trees which are not the best")
 
@@ -645,7 +684,7 @@ if __name__ == "__main__":
         "-s", "data/Hector/conAB1rho60.fa",
         "-i", "0.3",
         "-m", "LG+C10+G",
-        "-k"
+        "-par"
     ]
 
     arguments = parser.parse_args()
