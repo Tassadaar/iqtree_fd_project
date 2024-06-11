@@ -147,7 +147,7 @@ def validate_alignment(tree, alignment_file):
         for alignment_format in ALIGNMENT_FORMATS:
             try:
                 alignment_obj = AlignIO.read(alignment_file, alignment_format)
-            except ValueError as e:
+            except:
                 continue
 
             if isinstance(alignment_obj, AlignIO.MultipleSeqAlignment):
@@ -160,7 +160,7 @@ def validate_alignment(tree, alignment_file):
     alignment = detect_alignment_format()
 
     if not alignment:
-        raise ValueError(f"Unrecognized alignment format! Supported formats are {ALIGNMENT_FORMATS}")
+        raise ValueError(f"Unrecognized alignment format! Supported formats are {ALIGNMENT_FORMATS}.")
 
     seq_ids = set(record.id for record in alignment)
     seen_taxa = set()
