@@ -11,6 +11,12 @@ import time
 from ete3 import Tree, TreeStyle, TreeNode
 from Bio import AlignIO
 
+# alignment formats supported by AlignIO
+ALIGNMENT_FORMATS = [
+    "clustal", "emboss", "fasta", "fasta-m10", "ig", "maf", "mauve", "msf", "nexus", "phylip",
+    "phylip-sequential", "phylip-relaxed", "stockholm"
+]
+
 
 def main(args):
     try:
@@ -99,7 +105,7 @@ def main(args):
 
         # if args.nexus is not provided on the command line...
         if not nexus_address:
-            # ... generate nexus file that is called 'test_nex.nex':
+            # ... generate nexus file that is called 'nex':
             nexus_address, models[1] = create_custom_nexus_file(
                 avg_mixture_weights, "data/modelmixtureCAT.nex", models[1], f"CAT-{models[1]}"
             )
@@ -134,13 +140,28 @@ def main(args):
     #     sys.exit()
 
 
+# Does the alignment have the exact same set of taxa as the tree?
 def validate_alignment(tree, alignment_file):
-    """
-    Does the alignment have the exact same set of taxa
-    as the tree?
-    """
+    def detect_alignment_format():
+
+        for alignment_format in ALIGNMENT_FORMATS:
+            try:
+                alignment_obj = AlignIO.read(alignment_file, alignment_format)
+            except ValueError as e:
+                continue
+
+            if isinstance(alignment_obj, AlignIO.MultipleSeqAlignment):
+                print(f"Your alignment is of the format {alignment_format}.\n")
+                return alignment_obj
+
+        return None
+
     # parsing fasta file
-    alignment = AlignIO.read(alignment_file, "fasta")
+    alignment = detect_alignment_format()
+
+    if not alignment:
+        raise ValueError(f"Unrecognized alignment format! Supported formats are {ALIGNMENT_FORMATS}")
+
     seq_ids = set(record.id for record in alignment)
     seen_taxa = set()
 
@@ -646,7 +667,7 @@ if __name__ == "__main__":
 
     parser.add_argument("-te", "--tree", required=True, help="Tree file in newick format, must be rooted")
 
-    parser.add_argument("-s", "--alignment", required=True, help="Alignment in fasta format")
+    parser.add_argument("-s", "--alignment", required=True, help="Alignment in a supported format")
 
     # TODO: improve description, give explicit examples
     parser.add_argument("-d", "--definition", required=True,
