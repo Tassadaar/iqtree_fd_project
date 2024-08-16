@@ -325,8 +325,13 @@ def main(args):
         b_tree = conform_iqtree_tree("test_b.treefile", b_tree.get_children()[0].get_leaf_names())
 
         trees = []
-        denominator = int(1 / float(args.increment))
-        proportions = [x / denominator for x in range(1, denominator)]
+        proportions = []
+        cur_prop = float(args.increment)
+
+        while cur_prop < 1.0:
+            proportions.append(cur_prop)
+            cur_prop += float(args.increment)
+
         a_branch = a_tree.get_children()[0].dist + a_tree.get_children()[1].dist
         b_branch = b_tree.get_children()[0].dist + b_tree.get_children()[1].dist
 
