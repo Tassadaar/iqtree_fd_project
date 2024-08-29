@@ -299,6 +299,10 @@ def validate_def_file(tree, def_file):
     if unique_taxa:
         raise ValueError(f"Some taxa do not exist in the tree: {unique_taxa}.")
 
+    # check 5: either definition file partition (taxa group) must have more than 1 taxon
+    if len(taxa_groups[0]) == 1 or len(taxa_groups[1]) == 1:
+        raise ValueError(f"Definition file has at least one partition with only 1 taxon!")
+
     return taxa_groups
 
 
