@@ -179,6 +179,8 @@ def main(args):
         # re-optimized alpha and mixture weights to make a new nexus file, called 're-optimized-model.nexus'
         nexus_address, models[1] = create_custom_nexus_file(avg_mixture_weights, file_handle, models[1], key_phrase)
 
+        # --- RUN IQTREE FUNDI WITH THE RE-OPTIMIZED MODEL ON ALL STITCHED TREES --- 
+
         # second iqtree (funDi) execution
         ## parallelization (on a single node/workstation) turned out not be more cost effective,
         ## but we keep it here because its a nice example of how to implement parallilzation
@@ -189,6 +191,8 @@ def main(args):
         else:
             run_iqtrees_seq(trees, alignment_address, avg_alpha, "+".join(models), nexus_address, args.cores,
                             a_tree.get_leaf_names())
+
+        # --- GENERATE SUMMARY. WHICH STITCHED TREE HAS THE HIGHEST LIKELIHOOD? ---
 
         # To get the number of trees generated, we take number of proportions to the power of 2
         summary_name = args.alignment.replace('.aln','') + '.summary.txt'
