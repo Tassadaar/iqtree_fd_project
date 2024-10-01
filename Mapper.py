@@ -21,6 +21,8 @@ import concurrent.futures
 import itertools
 import re
 import time
+from decimal import Decimal
+
 from ete3 import Tree, TreeStyle, TreeNode
 from Bio import AlignIO
 
@@ -326,11 +328,11 @@ def main(args):
 
         trees = []
         proportions = []
-        cur_prop = float(args.increment)
+        cur_prop = Decimal(args.increment)
 
         while cur_prop < 1.0:
             proportions.append(cur_prop)
-            cur_prop += float(args.increment)
+            cur_prop += Decimal(args.increment)
 
         a_branch = a_tree.get_children()[0].dist + a_tree.get_children()[1].dist
         b_branch = b_tree.get_children()[0].dist + b_tree.get_children()[1].dist
