@@ -21,6 +21,7 @@ import subprocess
 import concurrent.futures
 import itertools
 import time
+from decimal import Decimal
 
 # stuff you need to install
 from ete3 import Tree, TreeStyle, TreeNode
@@ -126,11 +127,11 @@ def main(args):
 
         # generate list of proportional branch lengths
         proportions = []
-        cur_prop = float(args.increment)
+        cur_prop = Decimal(args.increment)
+
         while cur_prop < 1.0:
             proportions.append(cur_prop)
-            cur_prop += float(args.increment)
-        print(proportions)
+            cur_prop += Decimal(args.increment)
 
         a_branch = a_tree.get_children()[0].dist + a_tree.get_children()[1].dist
         b_branch = b_tree.get_children()[0].dist + b_tree.get_children()[1].dist
@@ -140,7 +141,9 @@ def main(args):
         trees = []
         # get alpha and beta from a cartesian product of proportions
         for alpha, beta in itertools.product(proportions, repeat=2):
-
+            alpha = float(alpha)
+            beta = float(beta)
+            
             # set new branch lengths for a
             a_tree.get_children()[0].dist = a_branch * alpha
             a_tree.get_children()[1].dist = a_branch * (1 - alpha)
