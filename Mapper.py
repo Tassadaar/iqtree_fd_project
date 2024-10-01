@@ -341,7 +341,9 @@ def main(args):
 
         # get alpha and beta from a cartesian product of proportions
         for alpha, beta in itertools.product(proportions, repeat=2):
-
+            alpha = float(alpha)
+            beta = float(beta)
+            
             # set new branch lengths for a
             a_tree.get_children()[0].dist = a_branch * alpha
             a_tree.get_children()[1].dist = a_branch * (1 - alpha)
