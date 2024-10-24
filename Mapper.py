@@ -25,6 +25,7 @@ from decimal import Decimal
 
 # stuff you need to install
 from ete3 import Tree, TreeStyle, TreeNode
+from ete3.parser.newick import NewickError
 from Bio import AlignIO
 from dask_jobqueue import SGECluster
 from dask.distributed import Client
@@ -49,10 +50,10 @@ cluster = SGECluster(
     memory="1GB",
 
     # job resources
-    job_extra=['-V', '-pe threaded 12'],
+    job_extra=['-V', '-pe threaded 20'],
     walltime="99:99:99",
     #resource_spec='h_vmem=70G',
-    queue='2T-batch',
+    queue='768G-batch',
 )
 
 # Create a Dask client
@@ -63,7 +64,11 @@ client = Client(cluster)
 def main(args):
     try:
         # process command line input
-        master_tree = Tree(args.tree)
+        try:
+            master_tree = Tree(args.tree)
+        except NewickError:
+            sys.exit(f'{args.tree} can not be parsed by ETE3, please reformat your tree')
+
         alignment_address = args.alignment
         alignment = validate_alignment(master_tree, alignment_address)
         defined_groups = validate_def_file(master_tree, args.definition)
@@ -155,7 +160,7 @@ def main(args):
         for alpha, beta in itertools.product(proportions, repeat=2):
             alpha = float(alpha)
             beta = float(beta)
-            
+
             # set new branch lengths for a
             a_tree.get_children()[0].dist = a_branch * alpha
             a_tree.get_children()[1].dist = a_branch * (1 - alpha)
@@ -176,7 +181,7 @@ def main(args):
         # print number of trees generated
         print(f"{len(trees)} tree were generated\n")
 
-        
+
         # --- CREATE NEXUS MODEL FILE FROM RE-OPTIMIZED ALPHA AND MIXTURE WEIGHTS ---
 
         # if we are using a custom model,
@@ -189,7 +194,7 @@ def main(args):
         else:
             file_handle = io.StringIO(MODEL_MIXTURE_DB)
             key_phrase = f"CAT-{models[1]}"
-        
+
         # combine class frequencies from custom model or LG+Cx0 model with 
         # re-optimized alpha and mixture weights to make a new nexus file, called 're-optimized-model.nexus'
         nexus_address, models[1] = create_custom_nexus_file(avg_mixture_weights, file_handle, models[1], key_phrase)
@@ -270,28 +275,28 @@ def validate_def_file(tree, def_file):
     # as a list of two sets of taxa
     # this ensures uniqueness, assuming that order does not matter with def files
     with open(def_file, "r") as file:
-        taxa_groups = []
+        taxa_groups: list[set[str]] = []
 
         for line in file:
-            # clean line by removing whitespace, comma or newline characters
-            clean_line = line.rstrip(" ,\n")
+            # clean line by removing trailing whitespace, comma or newline characters
+            clean_line: str = line.rstrip(" ,\n")
 
             # ignore empty sets
             if clean_line == "":
                 continue
 
             # parse clean line delimited by comma or whitespace
-            taxon_group = set(re.split(r"[,\s]+", clean_line))
+            taxon_group: set[str] = set(re.split(r"[,\s]+", clean_line))
             taxa_groups.append(taxon_group)
 
     # check 1: definition file must not be blank
     if not taxa_groups:
-        raise ValueError(f"Definition file is blank!")
+        raise ValueError("Definition file is blank!")
 
     if len(taxa_groups) > 2:
-        raise ValueError(f"Definition file contains more than 2 taxa groups!")
+        raise ValueError("Definition file contains more than 2 taxa groups!")
 
-    leaves = set(tree.get_leaf_names())  # assuming leaves are correct as reference
+    leaves: set[str] = set(tree.get_leaf_names())  # assuming leaves are correct as reference
 
     # auto-complete the list if only one group of taxa is provided
     if len(taxa_groups) == 1:
@@ -316,7 +321,7 @@ def validate_def_file(tree, def_file):
 
     # check 5: either definition file partition (taxa group) must have more than 1 taxon
     if len(taxa_groups[0]) == 1 or len(taxa_groups[1]) == 1:
-        raise ValueError(f"Definition file has at least one partition with only 1 taxon!")
+        raise ValueError("Definition file has at least one partition with only 1 taxon!")
 
     return taxa_groups
 
@@ -536,37 +541,37 @@ def run_iqtrees_seq(trees, alignment_address, avg_alpha, model, nexus_file, core
 
     # upscale dask to 10 workers
     # each of which will run one or more trees
-    cluster.scale(jobs=10)
+    cluster.scale(jobs=5)
 
     delayed_tasks = []
-    total_tree_count = len(trees)
+    # total_tree_count = len(trees)
 
     for index, tree in enumerate(trees, start=1):
         formatted_index = f"{index:02d}"
         # render image of stitched-together-tree
         # tree.render(f"subtree_{i}.png") not supported on perun
-        tree.write(format=1, outfile=f"test_{formatted_index}.tree")
+        tree.write(format=1, outfile=f"tree_{formatted_index}.tree")
 
         iqtree_cmd = [
             "iqtree2",
             "-s", alignment_address,
-            "--tree-fix", f"test_{formatted_index}.tree",
+            "--tree-fix", f"tree_{formatted_index}.tree",
             "-m", f"{model}{{{avg_alpha}}}",
             "--mdef", nexus_file,
             "-nt", f"{cores}",
-            "--prefix", f"test_{formatted_index}",
+            "--prefix", f"tree_{formatted_index}",
             "-prec", "10",
             "-blfix",
             "--fundi", f"{','.join(leaves)},estimate",
-            "-redo",
             "--quiet"
+            # "-redo",
         ]
 
         # print(f"Running iqtree funDi on Tree {formatted_index} out of {total_tree_count}...\n")
         # subprocess.run(iqtree_cmd, stderr=subprocess.DEVNULL)
         # print(f"Completed running Tree {formatted_index}.\n")
         delayed_tasks.append(delayed(subprocess.run)(iqtree_cmd, stderr=subprocess.DEVNULL))
-        
+
     # Compute the delayed tasks in parallel
     futures = client.compute(delayed_tasks)
 
@@ -589,27 +594,27 @@ def run_iqtrees_par(trees, alignment_address, avg_alpha, model, nexus_file, all_
                     return int(line.split(" ")[1])
 
     # generate first iqtree command
-    trees[0].write(format=1, outfile=f"test_01.tree")
+    trees[0].write(format=1, outfile="tree_01.tree")
     first_iqtree_command = [
         "iqtree2",
         "-s", alignment_address,
-        "--tree-fix", f"test_01.tree",
+        "--tree-fix", "tree_01.tree",
         "-m", f"{model}{{{avg_alpha}}}",
         "--mdef", nexus_file,
         "-nt", f"{all_cores}",
-        "--prefix", f"test_01",
+        "--prefix", "tree_01",
         "-prec", "10",
         "-blfix",
         "--fundi", f"{','.join(leaves)},estimate",
-        "-redo",
         "--quiet"
+        # "-redo",
     ]
 
     # get the memory requirement for a reconstructed tree, convert to gigabytes
     print(f"Running iqtree funDi for Tree 01 out of {len(trees)} and determining memory requirement.\n")
     subprocess.run(first_iqtree_command, stderr=subprocess.DEVNULL)
     print("Completed running Tree 01 and memory determination.\n")
-    mem_req = get_memory_requirement("test_01.log") * 0.001
+    mem_req = get_memory_requirement("tree_01.log") * 0.001
 
     # determine the max numbers of concurrent processes and their cores
     if all_cores < memory / mem_req:
@@ -624,16 +629,16 @@ def run_iqtrees_par(trees, alignment_address, avg_alpha, model, nexus_file, all_
     for index, tree in enumerate(trees[1:], start=2):
         formatted_index = f"{index:02d}"
         # render image of stitched-together-tree
-        # tree.render(f"test_{i}.png") not supported on perun
-        tree.write(format=1, outfile=f"test_{formatted_index}.tree")
+        # tree.render(f"tree_{i}.png") not supported on perun
+        tree.write(format=1, outfile=f"tree_{formatted_index}.tree")
         iqtree_command = [
             "iqtree2",
             "-s", alignment_address,
-            "--tree-fix", f"test_{formatted_index}.tree",
+            "--tree-fix", f"tree_{formatted_index}.tree",
             "-m", f"{model}{{{avg_alpha}}}",
             "--mdef", nexus_file,
             "-nt", f"{cores}",
-            "--prefix", f"test_{formatted_index}",
+            "--prefix", f"tree_{formatted_index}",
             "-prec", "10",
             "-blfix",
             "--fundi", f"{','.join(leaves)},estimate",
@@ -671,7 +676,7 @@ def generate_summary(summary_filename, tree_count, model, increment, taxa_groups
     for index in range(1, tree_count + 1):
         formatted_index = f"{index:02d}"
 
-        with open(f"test_{formatted_index}.log", "r") as iqtree_file:
+        with open(f"tree_{formatted_index}.log", "r") as iqtree_file:
 
             for line in iqtree_file:
 
@@ -714,9 +719,9 @@ def generate_summary(summary_filename, tree_count, model, increment, taxa_groups
     #     if not node.is_leaf():
     #         node.name = "node"
 
-    # best_tree.render(file_name=f"test_{best_tree_index}.png", tree_style=tree_style, units="px", w=800, h=1000)
-    best_tree = conform_iqtree_tree(f"test_{sorted_tree_properties[0][0]}.treefile", taxa_groups[0])
-    best_tree.write(format=1, outfile=f"test_{sorted_tree_properties[0][0]}.treefile")
+    # best_tree.render(file_name=f"tree_{best_tree_index}.png", tree_style=tree_style, units="px", w=800, h=1000)
+    best_tree = conform_iqtree_tree(f"tree_{sorted_tree_properties[0][0]}.treefile", taxa_groups[0])
+    best_tree.write(format=1, outfile=f"tree_{sorted_tree_properties[0][0]}.treefile")
 
     # print to summary file
     print("Generating summary...\n")
@@ -741,7 +746,7 @@ def generate_summary(summary_filename, tree_count, model, increment, taxa_groups
 
         # print tree with branch lengths
         summary_file.write(f"{best_tree.get_ascii(attributes=['name', 'dist'], show_internal=True)}\n\n")
-        # summary_file.write(f"See \"test_{best_tree_index}.png\" for a tree illustration.\n\n")
+        # summary_file.write(f"See \"tree_{best_tree_index}.png\" for a tree illustration.\n\n")
         summary_file.write("The following list ranks the remaining trees based on best log-likelihood:\n")
 
         for index in range(1, len(sorted_tree_properties)):
@@ -753,22 +758,22 @@ def generate_summary(summary_filename, tree_count, model, increment, taxa_groups
     # print("Summary generated under \"summary.txt\".")
     print(f"Summary generated under \"{summary_filename}\".")
 
-    # subprocess.run(["mv", f"test_{best_index}.treefile", "best_tree.treefile"])
-    # subprocess.run(["mv", f"test_{best_index}.iqtree", "best_tree.iqtree"])
-    # subprocess.run(["mv", f"test_{best_index}.log", "best_tree.log"])
-    # subprocess.run(["mv", f"test_{best_index}.ckp.gz", "best_tree.ckp.gz"])
+    # subprocess.run(["mv", f"tree_{best_index}.treefile", "best_tree.treefile"])
+    # subprocess.run(["mv", f"tree_{best_index}.iqtree", "best_tree.iqtree"])
+    # subprocess.run(["mv", f"tree_{best_index}.log", "best_tree.log"])
+    # subprocess.run(["mv", f"tree_{best_index}.ckp.gz", "best_tree.ckp.gz"])
     alignment_index = summary_filename.replace('.summary.txt','')
-    subprocess.run(["mv", f"test_{best_index}.treefile", f"{alignment_index}.best_tree.treefile"])
-    subprocess.run(["mv", f"test_{best_index}.iqtree", f"{alignment_index}.best_tree.iqtree"])
-    subprocess.run(["mv", f"test_{best_index}.log", f"{alignment_index}.best_tree.log"])
-    subprocess.run(["mv", f"test_{best_index}.ckp.gz", f"{alignment_index}.best_tree.ckp.gz"])
+    subprocess.run(["mv", f"tree_{best_index}.treefile", f"{alignment_index}.best_tree.treefile"])
+    subprocess.run(["mv", f"tree_{best_index}.iqtree", f"{alignment_index}.best_tree.iqtree"])
+    subprocess.run(["mv", f"tree_{best_index}.log", f"{alignment_index}.best_tree.log"])
+    subprocess.run(["mv", f"tree_{best_index}.ckp.gz", f"{alignment_index}.best_tree.ckp.gz"])
 
     if keep:
         return
 
-    # Get a list of all filenames matching test_*.*
+    # Get a list of all filenames matching tree_*.*
     # then constructs the command by appending these filenames to ["rm", "-f"].
-    files = glob.glob("test_*.*")
+    files = glob.glob("tree_*.*")
     if files:
         subprocess.run(["rm", "-f"] + files)
 
