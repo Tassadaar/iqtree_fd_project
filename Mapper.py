@@ -193,8 +193,12 @@ def main(args):
 
         # combine class frequencies from custom model or LG+Cx0 model with 
         # re-optimized alpha and mixture weights to make a new nexus file, called 're-optimized-model.nexus'
-        nexus_address, models[1] = create_custom_nexus_file(avg_mixture_weights, file_handle, models[1], key_phrase)
-        # create_custom_nexus_file(avg_mixture_weights, file_handle, models[1], key_phrase)
+        # nexus_address, models[1] = create_custom_nexus_file(avg_mixture_weights, file_handle, models[1], key_phrase)
+        create_custom_nexus_file(avg_mixture_weights, file_handle, models[1], key_phrase)
+
+        # update model name that will refer to the model
+        # described in 're-optimized-model.nexus'
+        models[1] = f"fundi_{models[1]}"
 
         # --- RUN IQTREE FUNDI WITH THE RE-OPTIMIZED MODEL ON ALL STITCHED TREES --- 
 
@@ -202,11 +206,11 @@ def main(args):
         ## parallelization (on a single node/workstation) turned out not be more cost effective,
         ## but we keep it here because its a nice example of how to implement parallilzation
         if args.parallelization:
-            run_iqtrees_par(trees, alignment_address, avg_alpha, "+".join(models), nexus_address, args.cores,
+            run_iqtrees_par(trees, alignment_address, avg_alpha, "+".join(models), 're-optimized-model.nexus', args.cores,
                             args.memory, a_tree.get_leaf_names())
         ## sequential mode
         else:
-            run_iqtrees_seq(trees, alignment_address, avg_alpha, "+".join(models), nexus_address, args.cores,
+            run_iqtrees_seq(trees, alignment_address, avg_alpha, "+".join(models), 're-optimized-model.nexus', args.cores,
                             a_tree.get_leaf_names())
 
         # --- GENERATE SUMMARY. WHICH STITCHED TREE HAS THE HIGHEST LIKELIHOOD? ---
@@ -498,7 +502,6 @@ def create_custom_nexus_file(
 ) -> None:
 
     # container for stock class frequencies
-    # mixture_model_classes: list[list[str]] = []
     # mixture_model_freqs: dict[str, tuple[str, list[str]]] = {}
     mixture_model_freqs = {}
 
@@ -543,8 +546,6 @@ def create_custom_nexus_file(
             nex_file.write(class_line)
         nex_file.write(weight_line + "\n")
         nex_file.write("end;")
-
-    return "re-optimized-model.nexus", f"fundi_{mixture_model}"
 
 
 def run_iqtrees_seq(trees, alignment_address, avg_alpha, model, nexus_file, cores, leaves):
