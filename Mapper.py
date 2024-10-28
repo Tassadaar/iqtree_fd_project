@@ -53,7 +53,8 @@ cluster = SGECluster(
     job_extra=['-V', '-pe threaded 20'],
     walltime="99:99:99",
     #resource_spec='h_vmem=70G',
-    queue='768G-batch',
+    # queue='768G-batch',
+    queue='256G-batch,768G-batch,2T-batch',
 )
 
 # Create a Dask client
@@ -160,22 +161,17 @@ def main(args):
         for alpha, beta in itertools.product(proportions, repeat=2):
             alpha = float(alpha)
             beta = float(beta)
-
             # set new branch lengths for a
             a_tree.get_children()[0].dist = a_branch * alpha
             a_tree.get_children()[1].dist = a_branch * (1 - alpha)
-
             # set new branch lengths for b
             b_tree.get_children()[0].dist = b_branch * beta
             b_tree.get_children()[1].dist = b_branch * (1 - beta)
-
             # reconstruct master tree
             new_master_tree = TreeNode(dist=0.1)
             new_master_tree.add_child(a_tree.copy("deepcopy"))
             new_master_tree.add_child(b_tree.copy("deepcopy"))
-
             assert new_master_tree.robinson_foulds(master_tree)[0] == 0, "The new master tree is not the same!"
-
             trees.append(new_master_tree)
 
         # print number of trees generated
@@ -198,6 +194,7 @@ def main(args):
         # combine class frequencies from custom model or LG+Cx0 model with 
         # re-optimized alpha and mixture weights to make a new nexus file, called 're-optimized-model.nexus'
         nexus_address, models[1] = create_custom_nexus_file(avg_mixture_weights, file_handle, models[1], key_phrase)
+        # create_custom_nexus_file(avg_mixture_weights, file_handle, models[1], key_phrase)
 
         # --- RUN IQTREE FUNDI WITH THE RE-OPTIMIZED MODEL ON ALL STITCHED TREES --- 
 
@@ -232,8 +229,9 @@ def main(args):
     #     sys.exit()
 
 
-# Does the alignment have the exact same set of taxa as the tree?
 def validate_alignment(tree, alignment_file):
+
+    # Does the alignment have the exact same set of taxa as the tree?
     def detect_alignment_format():
 
         for alignment_format in ALIGNMENT_FORMATS:
@@ -275,7 +273,8 @@ def validate_def_file(tree, def_file):
     # as a list of two sets of taxa
     # this ensures uniqueness, assuming that order does not matter with def files
     with open(def_file, "r") as file:
-        taxa_groups: list[set[str]] = []
+        # taxa_groups: list[set[str]] = []
+        taxa_groups = []
 
         for line in file:
             # clean line by removing trailing whitespace, comma or newline characters
@@ -398,40 +397,43 @@ def conform_iqtree_tree(iqtree_treefile, ref_outgroup_leaves):
     return iqtree_tree
 
 
+# tuple[float, float] syntax only workes from 3.9 onwards
+# def calculate_weights(a_tree, b_tree) -> tuple[float, float]:
 def calculate_weights(a_tree, b_tree):
-    a_taxa_count = len(a_tree.get_leaf_names())
-    b_taxa_count = len(b_tree.get_leaf_names())
-    total_taxa_count = a_taxa_count + b_taxa_count
-
+    a_taxa_count: int = len(a_tree.get_leaf_names())
+    b_taxa_count: int = len(b_tree.get_leaf_names())
+    total_taxa_count: int = a_taxa_count + b_taxa_count
     return a_taxa_count / total_taxa_count, b_taxa_count / total_taxa_count
 
 
-def calculate_weighted_average_mixture_weights(a_iqtree_file, b_iqtree_file, a_weight, b_weight):
+def calculate_weighted_average_mixture_weights(
+    a_iqtree_file,
+    b_iqtree_file,
+    a_weight: float,
+    b_weight: float,
+):
+# ) -> dict[str, float]:
 
-    # get weights from iqtree log file, returns empty set if not found
     def get_mixture_weights(iqtree_file):
         mixture_weights = {}
-
         if not os.path.isfile(iqtree_file):
             raise FileNotFoundError(f"'{iqtree_file}' does not exist!")
-
         with open(iqtree_file, "r") as file:
-
             for line in file:
-
                 # NOTE: this will fail if the model provided does not exist
                 if "No  Component      Rate    Weight   Parameters" in line:
                     next_line = next(file)
-
                     while next_line != "\n":
                         words = next_line.split()
-                        mixture_weights[words[0]] = float(words[3])
+                        class_no, class_weight = words[0], words[3]
+                        mixture_weights[class_no] = float(class_weight)
                         next_line = next(file)
-
                     break
-
         return mixture_weights
 
+    # get weights from iqtree log file, returns empty set if not found
+    # a_mixture_weights: dict[str, float] = get_mixture_weights(a_iqtree_file)
+    # b_mixture_weights: dict[str, float] = get_mixture_weights(b_iqtree_file)
     a_mixture_weights = get_mixture_weights(a_iqtree_file)
     b_mixture_weights = get_mixture_weights(b_iqtree_file)
 
@@ -439,7 +441,6 @@ def calculate_weighted_average_mixture_weights(a_iqtree_file, b_iqtree_file, a_w
     # but doesn't hurt
     if not a_mixture_weights:
         raise ValueError(f"Cannot extract mixture weights, check if '{a_iqtree_file}' is formatted correctly!")
-
     if not b_mixture_weights:
         raise ValueError(f"Cannot extract mixture weights, check if '{a_iqtree_file}' is formatted correctly!")
 
@@ -447,10 +448,10 @@ def calculate_weighted_average_mixture_weights(a_iqtree_file, b_iqtree_file, a_w
     # weight = weight used to calculate the weighted average
     avg_mixture_weights = {}
 
-    # a_mixture_weights and b_mixture_weights have the same keys
-    for key, a_mixture_weight in a_mixture_weights.items():
-        weighted_avg_weight = a_mixture_weight * a_weight + b_mixture_weights[key] * b_weight
-        avg_mixture_weights[key] = weighted_avg_weight
+    # a_mixture_weights and b_mixture_weights have the same keys (class numbers)
+    for class_no, a_mixture_weight in a_mixture_weights.items():
+        weighted_avg_weight = a_mixture_weight * a_weight + b_mixture_weights[class_no] * b_weight
+        avg_mixture_weights[class_no] = weighted_avg_weight
 
     return avg_mixture_weights
 
@@ -488,53 +489,62 @@ def calculate_weighted_average_alpha(a_iqtree_file, b_iqtree_file, a_weight, b_w
     return a_alpha * a_weight + b_alpha * b_weight
 
 
-def create_custom_nexus_file(weights, file_handle, mixture_model, key_phrase):
-    out_freqs = []
+def create_custom_nexus_file(
+    # new_weights: dict[str, float],
+    new_weights,
+    nexus_fh,
+    mixture_model: str,
+    key_phrase: str,
+) -> None:
 
-    # generate frequency section
-    with file_handle as nexus_file:
-        section_found = False
+    # container for stock class frequencies
+    # mixture_model_classes: list[list[str]] = []
+    # mixture_model_freqs: dict[str, tuple[str, list[str]]] = {}
+    mixture_model_freqs = {}
 
-        for line in nexus_file:
-
-            # skip source comment or other
+    i: int = 0
+    # load user specified NEXUS file
+    # we need its classes' frequencies to build our 're-optimized-nexus.nexus'
+    with nexus_fh as nexus:
+        section: bool = False
+        for line in nexus:
+            # start parsing only after
+            # 'begin models;' or desired 'CAT-Cx0' is encountered
             if line.startswith(key_phrase):
-                section_found = True
+                section = True
                 continue
-
             # skip empty lines after begin models
-            if section_found and line.startswith("frequency"):
-                # for each line before encountering an empty line
-                # prepend fundi to frequency names
-                words = line.split()
-                words[1] = f"fundi_{words[1]}"
-                out_freqs.append(words)
+            if section and line.startswith("frequency"):
+                # link class no. to class name and aa frequencies
+                i += 1
+                _, class_name, _, *frequencies = line.split()
+                mixture_model_freqs[str(i)] = (class_name, frequencies)
                 continue
-
-            if section_found and line.startswith("model"):
+            if section and line.startswith("model"):
                 break
 
-        # generate model section
-        weight_statements = []
-        new_mixture_model = f"fundi_{mixture_model}"
 
-        for words, weight in zip(out_freqs, weights.values()):
-            weight_statements.append(f"{words[1]}:1:{weight}")
+    # link up newly optimized mixture weights to
+    # corresponding class names (C60pi1, C60pi2, etc)
+    weight_statements = []
+    for class_no, new_weight in new_weights.items():
+        class_name = mixture_model_freqs[class_no][0]
+        weight_statements.append( f"fundi_{class_name}:1:{str(new_weight)}" )
 
-        weight_line = f"model {new_mixture_model} = FMIX{{{','.join(weight_statements)}}};"
+    # define the model line
+    weight_line = f"model fundi_{mixture_model} = FMIX{{{','.join(weight_statements)}}};"
 
-        # write to file
-        with open("re-optimized-model.nexus", "w") as nex_file:
-            nex_file.write("#nexus\nbegin models;\n")
+    # write model with new, re-optimized mixture weights to
+    # 're-optimized-model.nexus' file
+    with open("re-optimized-model.nexus", "w") as nex_file:
+        nex_file.write("#nexus\nbegin models;\n")
+        for class_name, frequencies in mixture_model_freqs.values():
+            class_line = f"frequency fundi_{class_name} = {' '.join(frequencies)}\n"
+            nex_file.write(class_line)
+        nex_file.write(weight_line + "\n")
+        nex_file.write("end;")
 
-            for line in out_freqs:
-                nex_file.write(" ".join(line) + "\n")
-
-            nex_file.write(weight_line + "\n")
-
-            nex_file.write("end;")
-
-        return "re-optimized-model.nexus", new_mixture_model
+    return "re-optimized-model.nexus", f"fundi_{mixture_model}"
 
 
 def run_iqtrees_seq(trees, alignment_address, avg_alpha, model, nexus_file, cores, leaves):
@@ -547,7 +557,7 @@ def run_iqtrees_seq(trees, alignment_address, avg_alpha, model, nexus_file, core
     # total_tree_count = len(trees)
 
     for index, tree in enumerate(trees, start=1):
-        formatted_index = f"{index:02d}"
+        formatted_index = f"{index:03d}"
         # render image of stitched-together-tree
         # tree.render(f"subtree_{i}.png") not supported on perun
         tree.write(format=1, outfile=f"tree_{formatted_index}.tree")
@@ -763,10 +773,10 @@ def generate_summary(summary_filename, tree_count, model, increment, taxa_groups
     # subprocess.run(["mv", f"tree_{best_index}.log", "best_tree.log"])
     # subprocess.run(["mv", f"tree_{best_index}.ckp.gz", "best_tree.ckp.gz"])
     alignment_index = summary_filename.replace('.summary.txt','')
-    subprocess.run(["mv", f"tree_{best_index}.treefile", f"{alignment_index}.best_tree.treefile"])
-    subprocess.run(["mv", f"tree_{best_index}.iqtree", f"{alignment_index}.best_tree.iqtree"])
-    subprocess.run(["mv", f"tree_{best_index}.log", f"{alignment_index}.best_tree.log"])
-    subprocess.run(["mv", f"tree_{best_index}.ckp.gz", f"{alignment_index}.best_tree.ckp.gz"])
+    subprocess.run(["cp", f"tree_{best_index}.treefile", f"{alignment_index}.best_tree.treefile"])
+    subprocess.run(["cp", f"tree_{best_index}.iqtree", f"{alignment_index}.best_tree.iqtree"])
+    subprocess.run(["cp", f"tree_{best_index}.log", f"{alignment_index}.best_tree.log"])
+    subprocess.run(["cp", f"tree_{best_index}.ckp.gz", f"{alignment_index}.best_tree.ckp.gz"])
 
     if keep:
         return
