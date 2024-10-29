@@ -32,6 +32,75 @@ from dask.distributed import Client
 from dask import delayed
 
 
+# argument parser
+parser = argparse.ArgumentParser(description="Wrapper for FunDi fix")
+
+parser.add_argument( "-te", "--tree",
+    required=True,
+    help="Tree file in newick format, must be rooted"
+)
+parser.add_argument( "-s", "--alignment",
+    required=True,
+    help="Alignment in a supported format"
+)
+# TODO: improve description, give explicit examples
+parser.add_argument( "-d", "--definition",
+    required=True,
+    help="Definition file that splits the tree and alignment by FunDi branch"
+)
+# TODO: list all available models
+parser.add_argument( "-m", "--model",
+    required=False, default="LG+C10+G",
+    help="Model to be used with iqtree. Syntax: RateMatrix+MixtureModel+RateHeterogeneity. Default is LG+C10+G"
+)
+parser.add_argument( "-mdef", "--nexus",
+    required=False, default=None,
+    help="Custom model file in NEXUS format"
+)
+# TODO: improve (the wording of?) this
+parser.add_argument( "-i", "--increment",
+    required=False, default="0.1",
+    help="Metric to control branch length variance, default is 0.1"
+)
+parser.add_argument( "-nt", "--cores",
+    required=False, type=int, default=2,
+    help="Number of CPU cores to use"
+)
+parser.add_argument( "-mem", "--memory",
+    required=False, type=int, default=8,
+    help="Amount of memory in gigabytes to use"
+)
+parser.add_argument( "-q", "--jobqueue",
+    required=False, type=str, default=None,
+    help="If running on a computer cluster, the jobqueue to submit to. Can specify multiple queues delimited by comma"
+)
+parser.add_argument( "-j", "--jobs",
+    required=False, type=int, default=None,
+    help="If running on a computer cluster, the maximum number of jobs to distribute the workload to. Choose a number that prevents memory overload"
+)
+parser.add_argument( "-par", "--parallelization",
+    required=False, action="store_true",
+    help="If running on a single workstation, choose to run the funDi analyses in parallel"
+)
+parser.add_argument( "-k", "--keep",
+    required=False, action="store_true",
+    help="Keeps files associated with trees which are not the best"
+)
+arguments = parser.parse_args()
+
+# # emulating commandline arguments for development
+# sys.argv = [
+#     "Mapper.py",
+#     "-te", "data/Hector/TAB",
+#     "-d", "data/Hector/def",
+#     "-s", "data/Hector/conAB1rho60.fa",
+#     "-i", "0.3",
+#     "-m", "LG+C10+G",
+#     "-par"
+# ]
+
+
+
 # alignment formats supported by AlignIO
 ALIGNMENT_FORMATS = [
     "fasta", "phylip-relaxed", "phylip", "clustal", "emboss", "fasta-m10", "ig", 
@@ -53,8 +122,9 @@ cluster = SGECluster(
     job_extra=['-V', '-pe threaded 20'],
     walltime="99:99:99",
     #resource_spec='h_vmem=70G',
+    queue=arguments.jobqueue,
     # queue='768G-batch',
-    queue='256G-batch,768G-batch,2T-batch',
+    # queue='256G-batch,768G-batch,2T-batch',
 )
 
 # Create a Dask client
@@ -523,7 +593,7 @@ def create_custom_nexus_file(
                 _, class_name, _, *frequencies = line.split()
                 mixture_model_freqs[str(i)] = (class_name, frequencies)
                 continue
-            if section and line.startswith("model"):
+            if section and (line.startswith("model") or 'FMIX' in line):
                 break
 
 
@@ -552,7 +622,7 @@ def run_iqtrees_seq(trees, alignment_address, avg_alpha, model, nexus_file, core
 
     # upscale dask to 10 workers
     # each of which will run one or more trees
-    cluster.scale(jobs=5)
+    cluster.scale(jobs=arguments.jobs)
 
     delayed_tasks = []
     # total_tree_count = len(trees)
@@ -605,15 +675,15 @@ def run_iqtrees_par(trees, alignment_address, avg_alpha, model, nexus_file, all_
                     return int(line.split(" ")[1])
 
     # generate first iqtree command
-    trees[0].write(format=1, outfile="tree_01.tree")
+    trees[0].write(format=1, outfile="tree_001.tree")
     first_iqtree_command = [
         "iqtree2",
         "-s", alignment_address,
-        "--tree-fix", "tree_01.tree",
+        "--tree-fix", "tree_001.tree",
         "-m", f"{model}{{{avg_alpha}}}",
         "--mdef", nexus_file,
         "-nt", f"{all_cores}",
-        "--prefix", "tree_01",
+        "--prefix", "tree_001",
         "-prec", "10",
         "-blfix",
         "--fundi", f"{','.join(leaves)},estimate",
@@ -625,7 +695,7 @@ def run_iqtrees_par(trees, alignment_address, avg_alpha, model, nexus_file, all_
     print(f"Running iqtree funDi for Tree 01 out of {len(trees)} and determining memory requirement.\n")
     subprocess.run(first_iqtree_command, stderr=subprocess.DEVNULL)
     print("Completed running Tree 01 and memory determination.\n")
-    mem_req = get_memory_requirement("tree_01.log") * 0.001
+    mem_req = get_memory_requirement("tree_001.log") * 0.001
 
     # determine the max numbers of concurrent processes and their cores
     if all_cores < memory / mem_req:
@@ -685,7 +755,7 @@ def generate_summary(summary_filename, tree_count, model, increment, taxa_groups
     tree_properties = []
 
     for index in range(1, tree_count + 1):
-        formatted_index = f"{index:02d}"
+        formatted_index = f"{index:03d}"
 
         with open(f"tree_{formatted_index}.log", "r") as iqtree_file:
 
@@ -787,6 +857,14 @@ def generate_summary(summary_filename, tree_count, model, increment, taxa_groups
     files = glob.glob("tree_*.*")
     if files:
         subprocess.run(["rm", "-f"] + files)
+
+
+# execute program
+if __name__ == "__main__":
+    start_time = time.time()
+    main(arguments)
+    end_time = time.time()
+    print(f"\nRuntime: {end_time - start_time}")
 
 
 MODEL_MIXTURE_DB = """
@@ -1040,56 +1118,4 @@ end;
 """
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Tree mapper")
-
-    parser.add_argument("-te", "--tree", required=True, help="Tree file in newick format, must be rooted")
-
-    parser.add_argument("-s", "--alignment", required=True, help="Alignment in a supported format")
-
-    # TODO: improve description, give explicit examples
-    parser.add_argument("-d", "--definition", required=True,
-                        help="Definition file that splits the tree by FunDi branch")
-
-    # TODO: list all available models
-    parser.add_argument("-m", "--model", required=False, default="LG+C10+G",
-                        help="Model to be used with iqtree. Syntax: Rate Matrix+Mixture Model+Rate Heterogeneity. "
-                             "Default is LG+C10+G")
-
-    # TODO: improve (the wording of?) this
-    parser.add_argument("-i", "--increment", required=False, default="0.1",
-                        help="Metric to control branch length variance, default is 0.1")
-
-    parser.add_argument("-mdef", "--nexus", required=False, default=None,
-                        help="Nexus file to be used with iqtree")
-
-    parser.add_argument("-nt", "--cores", required=False, type=int, default=2,
-                        help="Number of CPU cores to use")
-
-    parser.add_argument("-mem", "--memory", required=False, type=int, default=8,
-                        help="Amount of memory in gigabytes to use")
-
-    parser.add_argument("-par", "--parallelization", required=False, action="store_true",
-                        help="Run the funDi analyses in parallel")
-
-    parser.add_argument("-k", "--keep", required=False, action="store_true",
-                        help="Keeps files associated with trees which are not the best")
-
-    # # emulating commandline arguments for development
-    # sys.argv = [
-    #     "Mapper.py",
-    #     "-te", "data/Hector/TAB",
-    #     "-d", "data/Hector/def",
-    #     "-s", "data/Hector/conAB1rho60.fa",
-    #     "-i", "0.3",
-    #     "-m", "LG+C10+G",
-    #     "-par"
-    # ]
-
-    arguments = parser.parse_args()
-
-    start_time = time.time()
-    main(arguments)
-    end_time = time.time()
-    print(f"\nRuntime: {end_time - start_time}")
 
