@@ -119,7 +119,7 @@ cluster = SGECluster(
     memory="1GB",
 
     # job resources
-    job_extra=['-V', '-pe threaded 20'],
+    job_extra=['-V', f'-pe threaded {arguments.cores}'],
     walltime="99:99:99",
     #resource_spec='h_vmem=70G',
     queue=arguments.jobqueue,
