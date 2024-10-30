@@ -859,14 +859,6 @@ def generate_summary(summary_filename, tree_count, model, increment, taxa_groups
         subprocess.run(["rm", "-f"] + files)
 
 
-# execute program
-if __name__ == "__main__":
-    start_time = time.time()
-    main(arguments)
-    end_time = time.time()
-    print(f"\nRuntime: {end_time - start_time}")
-
-
 MODEL_MIXTURE_DB = """
 #nexus
 
@@ -1116,6 +1108,15 @@ model C60 = POISSON+G+FMIX{C60pi1:1:0.0169698865,C60pi2:1:0.0211683374,C60pi3:1:
 
 end;
 """
+
+# execute program
+if __name__ == "__main__":
+    start_time = time.time()
+    main(arguments)
+    end_time = time.time()
+    print(f"\nRuntime: {end_time - start_time}")
+
+
 
 
 
