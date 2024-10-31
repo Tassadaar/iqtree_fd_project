@@ -854,9 +854,9 @@ def generate_summary(summary_filename, tree_count, model, increment, taxa_groups
 
     # Get a list of all filenames matching tree_*.*
     # then constructs the command by appending these filenames to ["rm", "-f"].
-    files = glob.glob("tree_*.*")
+    files = glob.glob("tree_*.*") + glob.glob("subtree*.*") + glob.glob("dask-worker*") + ["re-optimized-model.nexus"]
     if files:
-        subprocess.run(["rm", "-f"] + files)
+        subprocess.run(["rm", "-rf"] + files)
 
 
 MODEL_MIXTURE_DB = """
@@ -1115,8 +1115,3 @@ if __name__ == "__main__":
     main(arguments)
     end_time = time.time()
     print(f"\nRuntime: {end_time - start_time}")
-
-
-
-
-
