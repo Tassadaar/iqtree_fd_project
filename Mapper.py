@@ -284,6 +284,12 @@ def main(args):
         summary_name = args.alignment.replace('.aln','') + '.summary.txt'
         generate_summary(summary_name, len(trees), "+".join(models), args.increment, defined_groups, args.keep)
 
+        # Stop all Dask workers
+        cluster.scale(jobs=0)  # This should stop all workers
+        # Optionally, wait for all workers to fully stop
+        client.close()
+        cluster.close()
+
     except NameError as e:
         print(f"Panda-monium! {e}")
 
