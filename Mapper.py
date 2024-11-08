@@ -34,6 +34,7 @@ from dask import delayed
 # argument parser
 parser = argparse.ArgumentParser(description="Wrapper for FunDi fix")
 
+# input
 parser.add_argument( "-te", "--tree",
     required=True,
     help="Tree file in newick format, must be rooted"
@@ -42,12 +43,10 @@ parser.add_argument( "-s", "--alignment",
     required=True,
     help="Alignment in a supported format"
 )
-# TODO: improve description, give explicit examples
 parser.add_argument( "-d", "--definition",
     required=True,
     help="Definition file that splits the tree and alignment by FunDi branch"
 )
-# TODO: list all available models
 parser.add_argument( "-m", "--model",
     required=False, default="LG+C10+G",
     help="Model to be used with iqtree. Syntax: RateMatrix+MixtureModel+RateHeterogeneity. Default is LG+C10+G"
@@ -56,19 +55,18 @@ parser.add_argument( "-mdef", "--nexus",
     required=False, default=None,
     help="Custom model file in NEXUS format"
 )
-# TODO: improve (the wording of?) this
 parser.add_argument( "-i", "--increment",
     required=False, default=0.05, type=float,
     help="Partition top branches of subtrees in sections of X subs/site when stitching subtrees together in alternate full trees, default is 0.05"
 )
+
+# performance
 parser.add_argument( "-nt", "--cores",
     required=False, type=int, default=2,
     help="Number of CPU cores to use"
 )
-parser.add_argument( "-mem", "--memory",
-    required=False, type=int, default=8,
-    help="Amount of memory in gigabytes to use"
-)
+
+# running trees in parallel on a computer cluster
 parser.add_argument( "-q", "--jobqueue",
     required=False, type=str, default=None,
     help="If running on a computer cluster, the jobqueue to submit to. Can specify multiple queues delimited by comma"
@@ -77,77 +75,52 @@ parser.add_argument( "-j", "--jobs",
     required=False, type=int, default=None,
     help="If running on a computer cluster, the maximum number of jobs to distribute the workload to. Choose a number that prevents memory overload"
 )
+
+# running trees in parallel on a single node/workstation
 parser.add_argument( "-par", "--parallelization",
     required=False, action="store_true",
     help="If running on a single workstation, choose to run the funDi analyses in parallel"
 )
+parser.add_argument( "-mem", "--memory",
+    required=False, type=int, default=8,
+    help="Amount of memory in gigabytes to use"
+)
+
+# miscellaneous
 parser.add_argument( "-k", "--keep",
     required=False, action="store_true",
     help="Keeps files associated with trees which are not the best"
 )
 arguments = parser.parse_args()
 
-# # emulating commandline arguments for development
-# sys.argv = [
-#     "Mapper.py",
-#     "-te", "data/Hector/TAB",
-#     "-d", "data/Hector/def",
-#     "-s", "data/Hector/conAB1rho60.fa",
-#     "-i", "0.3",
-#     "-m", "LG+C10+G",
-#     "-par"
-# ]
 
 
-
-# alignment formats supported by AlignIO
-ALIGNMENT_FORMATS = [
-    "fasta", "phylip-relaxed", "phylip", "clustal", "emboss", "fasta-m10", "ig", 
-    "maf", "mauve", "msf", "nexus", "phylip-sequential", "stockholm"
-]
-
-
-# Configure the SGE cluster
-# the cluster object contains a scheduler!
-# see cluster.scheduler
-cluster = SGECluster(
-
-    # worker resources
-    cores=1,
-    processes=1,
-    memory="1GB",
-
-    # job resources
-    job_extra=['-V', f'-pe threaded {arguments.cores}'],
-    walltime="99:99:99",
-    #resource_spec='h_vmem=70G',
-    queue=arguments.jobqueue,
-    # queue='768G-batch',
-    # queue='256G-batch,768G-batch,2T-batch',
-)
-
-# Create a Dask client
-# and attach it to the cluster/scheduler
-client = Client(cluster)
 
 
 def main(args):
     try:
-        # process command line input
+
+        # --- PROCESS COMMAND LINE ARGUMENTS ---
+
+        # load tree
         try:
             master_tree = Tree(args.tree)
         except NewickError:
             sys.exit(f'{args.tree} can not be parsed by ETE3, please reformat your tree')
 
-        alignment_address = args.alignment
-        alignment = validate_alignment(master_tree, alignment_address)
+        # validate and load alignment and definition file
+        alignment = validate_alignment(master_tree, args.alignment)
         defined_groups = validate_def_file(master_tree, args.definition)
-        models = args.model.split("+")  # syntax: Rate Matrix+Mixture Model+Rate Heterogeneity
+
+        # parse model. Syntax: Rate Matrix+Mixture Model+Rate Heterogeneity
+        models: list[str] = args.model.split("+")
         nexus_address = args.nexus
-        a_tree, b_tree = get_ref_subtrees(master_tree, defined_groups)
 
 
         # --- SPLIT TREE AND ALIGNMENT BASED ON DEFINITION FILE ---
+
+        # split tree into two subtrees
+        a_tree, b_tree = get_ref_subtrees(master_tree, defined_groups)
 
         # write subtrees into newick files
         a_tree.write(format=1, outfile="subtree_a.newick")
@@ -160,45 +133,73 @@ def main(args):
 
         # --- RE-OPTIMIZE ALPHA AND MIXTURE WEIGHTS ON FIXED SUBTREES ---
 
-        # Scale the cluster to the desired number of workers
-        cluster.scale(jobs=2)
-
-        delayed_tasks = []
-        for subset in ["subtree_a", "subtree_b"]:
-
+        # collect iqtree tasks
+        iqtree_tasks = []
+        for subtree in ["subtree_a", "subtree_b"]:
             iqtree_command = [
                 "iqtree2",
-                "-nt", f"{args.cores}",
-                "-s", f"{subset}.aln",
-                "-te", f"{subset}.newick",
+                "-nt", str(args.cores),
+                "-s", f"{subtree}.aln",
+                "-te", f"{subtree}.newick",
                 "-mwopt",
                 "-prec", "10",
-                "--prefix", subset,
+                "--prefix", subtree,
                 "--quiet",
                 "-m", "+".join(models)
             ]
+            # sometimes the user wants to use a custom model defined in a NEXUS file
+            if args.nexus:
+                iqtree_command = iqtree_command + ["--mdef", args.nexus]
+            iqtree_tasks.append(iqtree_command)
 
-            ## sometimes we want to provide a custom model defined in a NEXUS file
-            if nexus_address:
-                iqtree_command = iqtree_command + ["--mdef", nexus_address]
+        # if we've provided a jobqueue argument,
+        # the user wants to run the fundi_wrapper
+        # on a computer cluster. Hence, use dask
+        if args.jobqueue:
 
-            # dask parallelization
-            delayed_tasks.append( delayed(subprocess.run)(iqtree_command, stderr=subprocess.DEVNULL) )
-            # delayed_tasks.append( delayed(run_command)(iqtree_command) )
+            # Configure the SGE cluster
+            # the cluster object contains a scheduler!
+            # see cluster.scheduler
+            cluster = SGECluster(
+                # worker resources
+                cores=1,
+                processes=1,
+                memory="1GB",
+                # job resources
+                job_extra=['-V', f'-pe threaded {str(args.cores)}'],
+                walltime="99:99:99",
+                #resource_spec='h_vmem=70G',
+                queue=args.jobqueue,
+            )
+            # Create a Dask client
+            # and attach it to the cluster/scheduler
+            client = Client(cluster)
+            # Scale the cluster to the desired number of workers
+            cluster.scale(jobs=2)
 
-            # standard (serial) with subprocess
-            # print(f"Running iqtree for Tree {subset[5]} out of 2\n")
-            # subprocess.run(iqtree_command, stderr=subprocess.DEVNULL)
-            # print(f"Completed running Tree {subset[5]}.\n")
+            # collect tasks to be submitted
+            delayed_tasks = [ 
+                delayed(subprocess.run)(task, stderr=subprocess.DEVNULL)
+                for task in iqtree_tasks
+            ]
+            # delayed_tasks.append( delayed(subprocess.run)(iqtree_command, stderr=subprocess.DEVNULL) )
 
-        # Compute the delayed tasks in parallel
-        futures = client.compute(delayed_tasks)
+            # Compute the delayed tasks in parallel
+            futures = client.compute(delayed_tasks)
+            # Gather results
+            client.gather(futures)
+            # Close the two workers
+            cluster.scale(jobs=0)
 
-        # Gather results
-        client.gather(futures)
-
-        # Close the two workers
-        cluster.scale(jobs=0)
+        # otherwise simply run
+        # one after the other
+        else:
+            for task in iqtree_tasks:
+                subtree = task[6]
+                # standard (serial) with subprocess
+                print(f"Running iqtree for {subtree}")
+                subprocess.run(task, stderr=subprocess.DEVNULL)
+                print(f"Completed running {subtree}")
 
         print('Done with first two trees', flush=True)
 
@@ -210,7 +211,7 @@ def main(args):
         # weighted average of alpha and mixture weights of the first two subtrees.
         # weighted using (n subtree_taxa / n all_taxa)
         a_weight, b_weight  = calculate_weights(a_tree, b_tree)
-        avg_alpha           = calculate_weighted_average_alpha("subtree_a.iqtree", "subtree_b.iqtree", a_weight, b_weight)
+        avg_alpha: float    = calculate_weighted_average_alpha("subtree_a.iqtree", "subtree_b.iqtree", a_weight, b_weight)
         avg_mixture_weights = calculate_weighted_average_mixture_weights("subtree_a.iqtree", "subtree_b.iqtree", a_weight, b_weight)
 
         # --- GENERATE LIST OF STITCHED-TOGETHER TREES ---
@@ -218,7 +219,7 @@ def main(args):
         # calculate length of top branches of re-estimated subtrees
         a_branch: float = a_tree.get_children()[0].dist + a_tree.get_children()[1].dist
         b_branch: float = b_tree.get_children()[0].dist + b_tree.get_children()[1].dist
-        print(f"branch a: {type(a_branch)} {a_branch}, branch b: {b_branch}\n", flush=True)
+        print(f"branch a: {type(a_branch)} {a_branch}, branch b: {b_branch}", flush=True)
 
         # generate steps (0.01, 0.02, 0.03 ... branch_length)
         a_steps = float_range(start=args.increment, stop=a_branch, step=args.increment)
@@ -248,8 +249,8 @@ def main(args):
         # if we are using a custom model,
         # defined in a custom NEXUS file,
         # provided on the command line 
-        if nexus_address:
-            file_handle = open(nexus_address, "r")
+        if args.nexus:
+            file_handle = open(args.nexus, "r")
             key_phrase = "begin models;"
         # if we are using a standard LG+Cx0 model
         else:
@@ -268,15 +269,46 @@ def main(args):
         # --- RUN IQTREE FUNDI WITH THE RE-OPTIMIZED MODEL ON ALL STITCHED TREES --- 
 
         # second iqtree (funDi) execution
+
         ## parallelization (on a single node/workstation) turned out not be more cost effective,
         ## but we keep it here because its a nice example of how to implement parallilzation
         if args.parallelization:
-            run_iqtrees_par(trees, alignment_address, avg_alpha, "+".join(models), 're-optimized-model.nexus', args.cores,
-                            args.memory, a_tree.get_leaf_names())
+            run_iqtrees_par(
+                trees=trees,
+                alignment_address=args.alignment,
+                avg_alpha=avg_alpha,
+                model="+".join(models),
+                nexus_file='re-optimized-model.nexus',
+                all_cores=args.cores,
+                memory=args.memory,
+                leaves=a_tree.get_leaf_names(),
+            )
+
+        # if we want to submit trees to a computer cluster
+        elif args.jobqueue:
+            run_iqtrees(
+                cluster=cluster,
+                client=client,
+                trees=trees,
+                alignment_address=args.alignment,
+                model="+".join(models),
+                avg_alpha=avg_alpha,
+                nexus_file='re-optimized-model.nexus',
+                cores=args.cores,
+                leaves=a_tree.get_leaf_names(),
+            )
+
         ## sequential mode
         else:
-            run_iqtrees_seq(trees, alignment_address, avg_alpha, "+".join(models), 're-optimized-model.nexus', args.cores,
-                            a_tree.get_leaf_names())
+            run_iqtrees(
+                trees=trees,
+                alignment_address=args.alignment,
+                model="+".join(models),
+                avg_alpha=avg_alpha,
+                nexus_file='re-optimized-model.nexus',
+                cores=args.cores,
+                leaves=a_tree.get_leaf_names(),
+            )
 
         # --- GENERATE SUMMARY. WHICH STITCHED TREE HAS THE HIGHEST LIKELIHOOD? ---
 
@@ -284,11 +316,6 @@ def main(args):
         summary_name = args.alignment.replace('.aln','') + '.summary.txt'
         generate_summary(summary_name, len(trees), "+".join(models), args.increment, defined_groups, args.keep)
 
-        # Stop all Dask workers
-        cluster.scale(jobs=0)  # This should stop all workers
-        # Optionally, wait for all workers to fully stop
-        client.close()
-        cluster.close()
 
     except NameError as e:
         print(f"Panda-monium! {e}")
@@ -312,19 +339,22 @@ def float_range(start: float, stop: float, step: float):
 
 def validate_alignment(tree, alignment_file):
 
+    # alignment formats supported by AlignIO
+    ALIGNMENT_FORMATS = [
+        "fasta", "phylip-relaxed", "phylip", "clustal", "emboss", "fasta-m10", "ig", 
+        "maf", "mauve", "msf", "nexus", "phylip-sequential", "stockholm"
+    ]
+
     # Does the alignment have the exact same set of taxa as the tree?
     def detect_alignment_format():
-
         for alignment_format in ALIGNMENT_FORMATS:
             try:
                 alignment_obj = AlignIO.read(alignment_file, alignment_format)
             except:
                 continue
-
             if isinstance(alignment_obj, AlignIO.MultipleSeqAlignment):
                 print(f"Your alignment is of the format {alignment_format}.\n")
                 return alignment_obj
-
         return None
 
     # parsing fasta file
@@ -537,7 +567,7 @@ def calculate_weighted_average_mixture_weights(
     return avg_mixture_weights
 
 
-def calculate_weighted_average_alpha(a_iqtree_file, b_iqtree_file, a_weight, b_weight):
+def calculate_weighted_average_alpha(a_iqtree_file, b_iqtree_file, a_weight, b_weight) -> float:
 
     # get alpha from iqtree log file, returns None if not found
     def get_alpha(iqtree_file):
@@ -547,23 +577,18 @@ def calculate_weighted_average_alpha(a_iqtree_file, b_iqtree_file, a_weight, b_w
             raise FileNotFoundError(f"'{iqtree_file}' does not exist!")
 
         with open(iqtree_file, "r") as file:
-
             for line in file:
-
                 if "Gamma shape alpha:" in line:
                     words = line.split()
                     alpha = float(words[3])
-
                     return alpha
-
         return alpha
 
-    a_alpha = get_alpha(a_iqtree_file)
-    b_alpha = get_alpha(b_iqtree_file)
+    a_alpha: float = get_alpha(a_iqtree_file)
+    b_alpha: float = get_alpha(b_iqtree_file)
 
     if not a_alpha:
         raise ValueError(f"Cannot extract weights, check if '{a_iqtree_file}' is formatted correctly!")
-
     if not b_alpha:
         raise ValueError(f"Cannot extract weights, check if '{a_iqtree_file}' is formatted correctly!")
 
@@ -625,28 +650,32 @@ def create_custom_nexus_file(
         nex_file.write("end;")
 
 
-def run_iqtrees_seq(trees, alignment_address, avg_alpha, model, nexus_file, cores, leaves):
-
-    # upscale dask to 10 workers
-    # each of which will run one or more trees
-    cluster.scale(jobs=arguments.jobs)
-
-    delayed_tasks = []
-    # total_tree_count = len(trees)
-
+def run_iqtrees(
+    trees,
+    alignment_address,
+    model: str,
+    avg_alpha: float,
+    nexus_file,
+    cores: int,
+    leaves,
+    cluster=None,
+    client=None,
+):
+    # collect iqtree tasks
+    iqtree_tasks = []
     for index, tree in enumerate(trees, start=1):
         formatted_index = f"{index:03d}"
         # render image of stitched-together-tree
         # tree.render(f"subtree_{i}.png") not supported on perun
         tree.write(format=1, outfile=f"tree_{formatted_index}.tree")
-
         iqtree_cmd = [
             "iqtree2",
             "-s", alignment_address,
             "--tree-fix", f"tree_{formatted_index}.tree",
-            "-m", f"{model}{{{avg_alpha}}}",
+            "-m", model,
+            "-a", str(avg_alpha),
             "--mdef", nexus_file,
-            "-nt", f"{cores}",
+            "-nt", str(cores),
             "--prefix", f"tree_{formatted_index}",
             "-prec", "10",
             "-blfix",
@@ -654,21 +683,47 @@ def run_iqtrees_seq(trees, alignment_address, avg_alpha, model, nexus_file, core
             "--quiet"
             # "-redo",
         ]
+        iqtree_tasks.append(iqtree_cmd)
 
-        # print(f"Running iqtree funDi on Tree {formatted_index} out of {total_tree_count}...\n")
-        # subprocess.run(iqtree_cmd, stderr=subprocess.DEVNULL)
-        # print(f"Completed running Tree {formatted_index}.\n")
-        delayed_tasks.append(delayed(subprocess.run)(iqtree_cmd, stderr=subprocess.DEVNULL))
+    # submit iqtrees to cluster
+    if cluster and client:
+        # upscale dask to 10 workers
+        # each of which will run one or more trees
+        cluster.scale(jobs=arguments.jobs)
+        delayed_tasks = [
+            delayed(subprocess.run)(task, stderr=subprocess.DEVNULL)
+            for task in iqtree_tasks
+        ]
+        # delayed_tasks.append(delayed(subprocess.run)(iqtree_cmd, stderr=subprocess.DEVNULL))
+        # Compute the delayed tasks in parallel
+        futures = client.compute(delayed_tasks)
+        # Gather results
+        client.gather(futures)
+        # Optionally, wait for all workers to fully stop
+        client.close()
+        # Stop all Dask workers
+        cluster.scale(jobs=0)  # This should stop all workers
+        cluster.close()
 
-    # Compute the delayed tasks in parallel
-    futures = client.compute(delayed_tasks)
+    # run iqtrees sequenctially
+    else:
+        for task in iqtree_tasks:
+            current_tree = task[4]
+            print(f"Running iqtree funDi on {current_tree} out of {len(trees)} total trees")
+            subprocess.run(task, stderr=subprocess.DEVNULL)
+            print(f"Completed running {current_tree}")
 
-    # Gather results
-    client.gather(futures)
 
-
-def run_iqtrees_par(trees, alignment_address, avg_alpha, model, nexus_file, all_cores, memory, leaves):
-
+def run_iqtrees_par(
+        trees,
+        alignment_address,
+        avg_alpha,
+        model,
+        nexus_file,
+        all_cores,
+        memory,
+        leaves
+):
     def get_memory_requirement(log_file):
 
         if not os.path.isfile(log_file):
