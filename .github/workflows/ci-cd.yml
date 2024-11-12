@@ -36,4 +36,4 @@ jobs:
 
       - name: Verify installation
         run:
-          python Mapper.py --help
+          python fundi_wrapper.py --help
