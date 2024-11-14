@@ -15,7 +15,7 @@ If not, see <https://www.gnu.org/licenses/>.
 """
 
 # standard modules
-import glob, io, os, sys, re
+import io, os, sys, re
 import argparse
 import subprocess
 import itertools
@@ -60,6 +60,10 @@ parser.add_argument( "-m", "--model",
 parser.add_argument( "-mdef", "--nexus",
     required=False, default=None,
     help="Custom model file in NEXUS format"
+)
+parser.add_argument( "-strat", "--strategy",
+    required=False, type=str, default='subtree_branch_lengths',
+    help="Are we using branch lengths from the full tree or the subtrees?"
 )
 
 # performance
@@ -114,15 +118,16 @@ logging.basicConfig(
 logging.info('fundi_wrapper.py was called with the following parameters:')
 # input_arguments = (
 for msg in (
-        f'-te/--tree      {arguments.tree}\n'
-        f'-s/--alignment  {arguments.alignment}\n'
-        f'-d/--definition {arguments.definition}\n'
-        f'-i/--increment  {arguments.increment}\n'
-        f'-m/--model      {arguments.model}\n'
-        f'-mdef/--nexus   {arguments.nexus}\n'
-        f'-o/--outdir     {arguments.outdir}\n'
-        f'-nt/--cores     {arguments.cores}\n'
-        f'-k/--keep       {arguments.keep}\n'
+        f'-te/--tree        {arguments.tree}\n'
+        f'-s/--alignment    {arguments.alignment}\n'
+        f'-d/--definition   {arguments.definition}\n'
+        f'-i/--increment    {arguments.increment}\n'
+        f'-m/--model        {arguments.model}\n'
+        f'-mdef/--nexus     {arguments.nexus}\n'
+        f'-strat/--strategy {arguments.strategy}\n'
+        f'-o/--outdir       {arguments.outdir}\n'
+        f'-nt/--cores       {arguments.cores}\n'
+        f'-k/--keep         {arguments.keep}\n'
 ).strip().split('\n'):
 # for msg in input_arguments.strip().split('\n'):
     logging.info(msg)
@@ -186,7 +191,10 @@ def main(args):
         AlignIO.write(b_alignment, f"{args.outdir}/subtree_b.aln", "fasta")
 
         # --- RE-OPTIMIZE ALPHA AND MIXTURE WEIGHTS ON FIXED SUBTREES ---
-        logging.info( 'Re-optimizing alpha, mixture weights and branch lengths per subtree' )
+        if   args.strategy == 'fulltree_branch_lengths':
+            logging.info( 'Re-optimizing alpha, mixture weights per subtree' )
+        elif args.strategy == 'subtree_branch_lengths':
+            logging.info( 'Re-optimizing alpha, mixture weights and branch lengths per subtree' )
 
         # collect iqtree tasks
         iqtree_tasks = []
@@ -203,8 +211,11 @@ def main(args):
                 "--quiet",
             ]
             # sometimes the user wants to use a custom model defined in a NEXUS file
+            # if args.strategy == 'fulltree_branch_lengths':
+            #     iqtree_command = iqtree_command + ["-blfix"]
             if args.nexus:
                 iqtree_command = iqtree_command + ["--mdef", args.nexus]
+            logging.info( ' '.join(iqtree_command) )
             iqtree_tasks.append(iqtree_command)
 
         # if we've provided a jobqueue argument,
@@ -267,38 +278,6 @@ def main(args):
         avg_alpha: float    = calculate_weighted_average_alpha(f"{args.outdir}/subtree_a.iqtree", f"{args.outdir}/subtree_b.iqtree", a_weight, b_weight)
         avg_mixture_weights = calculate_weighted_average_mixture_weights(f"{args.outdir}/subtree_a.iqtree", f"{args.outdir}/subtree_b.iqtree", a_weight, b_weight)
 
-        # --- GENERATE LIST OF STITCHED-TOGETHER TREES ---
-        logging.info( 'Stitching re-optimized subtrees together into many new full trees' )
-
-        # calculate length of top branches of re-estimated subtrees
-        a_branch: float = a_tree.get_children()[0].dist + a_tree.get_children()[1].dist
-        b_branch: float = b_tree.get_children()[0].dist + b_tree.get_children()[1].dist
-        logging.info(f'Length of top branch subtree a: {a_branch}')
-        logging.info(f'Length of top branch subtree b: {b_branch}')
-
-        # generate steps (0.01, 0.02, 0.03 ... branch_length)
-        a_steps = float_range(start=args.increment, stop=a_branch, step=args.increment)
-        b_steps = float_range(start=args.increment, stop=b_branch, step=args.increment)
-
-        trees = []
-        # get alpha and beta from a cartesian product of proportions
-        for alpha, beta in itertools.product(a_steps, b_steps):
-            # set new branch lengths for a
-            a_tree.get_children()[0].dist = alpha
-            a_tree.get_children()[1].dist = a_branch - alpha
-            # set new branch lengths for b
-            b_tree.get_children()[0].dist = beta
-            b_tree.get_children()[1].dist = b_branch - beta
-            # reconstruct master tree
-            new_master_tree = TreeNode(dist=0.1)
-            new_master_tree.add_child(a_tree.copy("deepcopy"))
-            new_master_tree.add_child(b_tree.copy("deepcopy"))
-            assert new_master_tree.robinson_foulds(master_tree)[0] == 0, "The new master tree is not the same!"
-            trees.append(new_master_tree)
-        # print number of trees generated
-        logging.debug(f'{len(trees)} tree were generated')#\n", flush=True
-        # print(f"{len(trees)} tree were generated\n", flush=True)
-
 
         # --- CREATE NEXUS MODEL FILE FROM RE-OPTIMIZED ALPHA AND MIXTURE WEIGHTS ---
         logging.info( 'Creating "re-optimized-model.nexus" using re-optimized alpha and mixture weights' )
@@ -323,59 +302,136 @@ def main(args):
         # described in 're-optimized-model.nexus'
         models[1] = f"fundi_{models[1]}"
 
-        # --- RUN IQTREE FUNDI WITH THE RE-OPTIMIZED MODEL ON ALL STITCHED TREES --- 
-        logging.info( 'Running IQTREE with --fundi on all newly created stitched full trees with the re-optimized alpha, mixture weights and subtrees' )
 
-        # second iqtree (funDi) execution
+        # if we use branch lengths from the subtrees,
+        # we need to stitch trees together
+        if args.strategy == 'subtree_branch_lengths':
 
-        ## parallelization (on a single node/workstation) turned out not be more cost effective,
-        ## but we keep it here because its a nice example of how to implement parallilzation
-        if args.parallelization:
-            run_iqtrees_par(
-                trees=trees,
-                alignment_address=args.alignment,
-                avg_alpha=avg_alpha,
-                model="+".join(models),
-                nexus_file=f'{args.outdir}/re-optimized-model.nexus',
-                all_cores=args.cores,
-                memory=args.memory,
-                leaves=a_tree.get_leaf_names(),
-            )
+            # --- GENERATE LIST OF STITCHED-TOGETHER TREES ---
+            logging.info( 'Stitching re-optimized subtrees together into many new full trees' )
 
-        # if we want to submit trees to a computer cluster
-        elif args.jobqueue:
-            run_iqtrees(
-                cluster=cluster,
-                client=client,
-                trees=trees,
-                alignment_address=args.alignment,
-                model="+".join(models),
-                avg_alpha=avg_alpha,
-                nexus_file=f'{args.outdir}/re-optimized-model.nexus',
-                outdir=args.outdir,
-                cores=args.cores,
-                leaves=a_tree.get_leaf_names(),
-            )
+            # calculate length of top branches of re-estimated subtrees
+            a_branch: float = a_tree.get_children()[0].dist + a_tree.get_children()[1].dist
+            b_branch: float = b_tree.get_children()[0].dist + b_tree.get_children()[1].dist
+            logging.info(f'Length of top branch subtree a: {a_branch}')
+            logging.info(f'Length of top branch subtree b: {b_branch}')
 
-        ## sequential mode
-        else:
-            run_iqtrees(
-                trees=trees,
-                alignment_address=args.alignment,
-                model="+".join(models),
-                avg_alpha=avg_alpha,
-                nexus_file=f'{args.outdir}/re-optimized-model.nexus',
-                cores=args.cores,
-                leaves=a_tree.get_leaf_names(),
-                outdir=args.outdir,
-            )
+            # generate steps (0.01, 0.02, 0.03 ... branch_length)
+            a_steps = float_range(start=args.increment, stop=a_branch, step=args.increment)
+            b_steps = float_range(start=args.increment, stop=b_branch, step=args.increment)
 
-        # --- GENERATE SUMMARY. WHICH STITCHED TREE HAS THE HIGHEST LIKELIHOOD? ---
-        logging.info( 'Generating summary file' )
+            trees = []
+            # get alpha and beta from a cartesian product of proportions
+            for alpha, beta in itertools.product(a_steps, b_steps):
+                # set new branch lengths for a
+                a_tree.get_children()[0].dist = alpha
+                a_tree.get_children()[1].dist = a_branch - alpha
+                # set new branch lengths for b
+                b_tree.get_children()[0].dist = beta
+                b_tree.get_children()[1].dist = b_branch - beta
+                # reconstruct master tree
+                new_master_tree = TreeNode(dist=0.1)
+                new_master_tree.add_child(a_tree.copy("deepcopy"))
+                new_master_tree.add_child(b_tree.copy("deepcopy"))
+                assert new_master_tree.robinson_foulds(master_tree)[0] == 0, "The new master tree is not the same!"
+                trees.append(new_master_tree)
+            # print number of trees generated
+            logging.info(f'{len(trees)} trees were generated')
 
-        # To get the number of trees generated, we take number of proportions to the power of 2
-        summary_name = args.outdir + '/' + args.alignment.replace('.aln','') + '.summary.txt'
-        generate_summary(summary_name, len(trees), "+".join(models), args.increment, defined_groups, args.keep, args.outdir)
+
+            # --- RUN IQTREE FUNDI WITH THE RE-OPTIMIZED MODEL ON ALL STITCHED TREES --- 
+            logging.info( 'Running IQTREE with --fundi on all newly created stitched full trees with the re-optimized alpha, mixture weights and subtrees' )
+
+            # second iqtree (funDi) execution
+
+            ## parallelization (on a single node/workstation) turned out not be more cost effective,
+            ## but we keep it here because its a nice example of how to implement parallilzation
+            if args.parallelization:
+                run_iqtrees_par(
+                    trees=trees,
+                    alignment_address=args.alignment,
+                    avg_alpha=avg_alpha,
+                    model="+".join(models),
+                    nexus_file=f'{args.outdir}/re-optimized-model.nexus',
+                    all_cores=args.cores,
+                    memory=args.memory,
+                    leaves=a_tree.get_leaf_names(),
+                )
+
+            # if we want to submit trees to a computer cluster
+            elif args.jobqueue:
+                run_iqtrees(
+                    cluster=cluster,
+                    client=client,
+                    trees=trees,
+                    alignment_address=args.alignment,
+                    model="+".join(models),
+                    avg_alpha=avg_alpha,
+                    nexus_file=f'{args.outdir}/re-optimized-model.nexus',
+                    outdir=args.outdir,
+                    cores=args.cores,
+                    leaves=a_tree.get_leaf_names(),
+                )
+
+            ## sequential mode
+            else:
+                run_iqtrees(
+                    trees=trees,
+                    alignment_address=args.alignment,
+                    model="+".join(models),
+                    avg_alpha=avg_alpha,
+                    nexus_file=f'{args.outdir}/re-optimized-model.nexus',
+                    cores=args.cores,
+                    leaves=a_tree.get_leaf_names(),
+                    outdir=args.outdir,
+                )
+
+            # --- GENERATE SUMMARY. WHICH STITCHED TREE HAS THE HIGHEST LIKELIHOOD? ---
+            logging.info( 'Generating summary file' )
+
+            # To get the number of trees generated, we take number of proportions to the power of 2
+            summary_name = args.alignment.replace('.aln','') + '.summary.txt'
+            generate_summary(summary_name, len(trees), "+".join(models), args.increment, defined_groups, args.keep, args.outdir)
+
+        # if however we want to estimate branch lengths
+        # during the fundi, we don't need to stitch trees together
+        elif args.strategy == 'fulltree_branch_lengths':
+
+            # we simply just insert the
+            # re-optimized alpha and mixture weights
+            # from the subtree analysis
+            iqtree_command = [
+                "iqtree2",
+                "-s", args.alignment,
+                "-te", args.tree,
+                "-m", "+".join(models),
+                "-mdef", f'{args.outdir}/re-optimized-model.nexus',
+                "-a", str(avg_alpha),
+                "--fundi", f"{','.join(defined_groups[0])},estimate",
+                "--prefix", f'{args.outdir}/fundi_full_tree',
+                "-nt", str(args.cores),
+                "-prec", "10",
+                "--quiet",
+            ]
+
+            cluster.scale(jobs=1)
+
+            # collect tasks to be submitted
+            delayed_tasks = [ 
+                delayed(subprocess.run)(task, stderr=subprocess.DEVNULL)
+                for task in [ iqtree_command ]
+            ]
+
+            logging.info( ' '.join(iqtree_command) )
+
+            # Compute the delayed tasks in parallel
+            futures = client.compute(delayed_tasks)
+            # Gather results
+            client.gather(futures)
+            client.close()
+            # Close the two workers
+            cluster.scale(jobs=0)
+            cluster.close()
 
 
     except NameError as e:
@@ -921,7 +977,7 @@ def generate_summary(summary_filename, tree_count, model, increment, taxa_groups
     best_tree.write(format=1, outfile=f"{outdir}/tree_{sorted_tree_properties[0][0]}.treefile")
 
     # create and write to some_tree.summary.txt
-    with open(summary_filename, "w") as summary_file:
+    with open(f'{outdir}/{summary_filename}', "w") as summary_file:
 
         summary_file.write(f"Trees generated: {tree_count}\n")
         summary_file.write(f"Model used: {model}\n")
