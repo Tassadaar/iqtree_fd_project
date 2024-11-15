@@ -110,12 +110,14 @@ arguments = parser.parse_args()
 # configure logger
 logging.basicConfig(
         filename='fundi_wrapper.log',
+        filemode='w',
         level=logging.INFO,
         format='%(asctime)s -- %(levelname)s: %(message)s'
 )
 
+
 # log how fundi_wrapper was called
-logging.info('fundi_wrapper.py was called with the following parameters:')
+logging.info('fundi_wrapper.py was called with the following parameters:\n')
 # input_arguments = (
 for msg in (
         f'-te/--tree        {arguments.tree}\n'
@@ -127,7 +129,7 @@ for msg in (
         f'-strat/--strategy {arguments.strategy}\n'
         f'-o/--outdir       {arguments.outdir}\n'
         f'-nt/--cores       {arguments.cores}\n'
-        f'-k/--keep         {arguments.keep}\n'
+        f'-k/--keep         {arguments.keep}\n\n'
 ).strip().split('\n'):
 # for msg in input_arguments.strip().split('\n'):
     logging.info(msg)
@@ -136,7 +138,7 @@ if arguments.jobqueue:
     job_arguments = (
         'fundi_wrapper.py was invoked to be run parallel on a computer cluster\n'
         f'-q/--jobqueue   {arguments.jobqueue}\n'
-        f'-j/--jobs       {arguments.jobs}\n'
+        f'-j/--jobs       {arguments.jobs}\n\n'
     )
     for msg in job_arguments.strip().split('\n'):
         logging.info(msg)
@@ -166,15 +168,13 @@ def main(args):
 
         # parse model. Syntax: Rate Matrix+Mixture Model+Rate Heterogeneity
         models: list[str] = args.model.split("+")
-        # nexus_address = args.nexus
-
 
         # --- SPLIT TREE AND ALIGNMENT BASED ON DEFINITION FILE ---
         logging.info( 'Splitting input tree and alignment into two subtrees and subalignments' )
 
         # create out directory
         try:
-            os.mkdir(args.outdir)
+            os.makedirs(args.outdir, exist_ok=True)
         except PermissionError:
             print(f"Permission denied: Unable to create '{args.outdir}'")
 
