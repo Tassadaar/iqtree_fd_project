@@ -110,15 +110,14 @@ arguments = parser.parse_args()
 # configure logger
 logging.basicConfig(
         filename='fundi_wrapper.log',
-        filemode='w',
-        level=logging.INFO,
+        # filemode='w',
+        level=logging.DEBUG,
         format='%(asctime)s -- %(levelname)s: %(message)s'
 )
 
 
 # log how fundi_wrapper was called
 logging.info('fundi_wrapper.py was called with the following parameters:\n')
-# input_arguments = (
 for msg in (
         f'-te/--tree        {arguments.tree}\n'
         f'-s/--alignment    {arguments.alignment}\n'
@@ -129,24 +128,24 @@ for msg in (
         f'-strat/--strategy {arguments.strategy}\n'
         f'-o/--outdir       {arguments.outdir}\n'
         f'-nt/--cores       {arguments.cores}\n'
-        f'-k/--keep         {arguments.keep}\n\n'
+        f'-k/--keep         {arguments.keep}\n'
 ).strip().split('\n'):
-# for msg in input_arguments.strip().split('\n'):
     logging.info(msg)
+logging.info('\n')
 
 if arguments.jobqueue:
-    job_arguments = (
+    for msg in (
         'fundi_wrapper.py was invoked to be run parallel on a computer cluster\n'
         f'-q/--jobqueue   {arguments.jobqueue}\n'
-        f'-j/--jobs       {arguments.jobs}\n\n'
-    )
-    for msg in job_arguments.strip().split('\n'):
+        f'-j/--jobs       {arguments.jobs}\n'
+    ).strip().split('\n'):
         logging.info(msg)
 
 else:
     logging.info(
-        'fundi_wrapper.py was invoked to be run sequentially, either locally or on a computer cluster'
+        'fundi_wrapper.py was invoked to be run sequentially, either locally or on a computer cluster\n'
     )
+logging.info('\n')
 
 
 def main(args):
@@ -191,10 +190,11 @@ def main(args):
         AlignIO.write(b_alignment, f"{args.outdir}/subtree_b.aln", "fasta")
 
         # --- RE-OPTIMIZE ALPHA AND MIXTURE WEIGHTS ON FIXED SUBTREES ---
-        if   args.strategy == 'fulltree_branch_lengths':
-            logging.info( 'Re-optimizing alpha, mixture weights per subtree' )
-        elif args.strategy == 'subtree_branch_lengths':
-            logging.info( 'Re-optimizing alpha, mixture weights and branch lengths per subtree' )
+        # if   args.strategy == 'fulltree_branch_lengths':
+        #     logging.info( 'Re-optimizing alpha, mixture weights per subtree' )
+        # elif args.strategy == 'subtree_branch_lengths':
+        #     logging.info( 'Re-optimizing alpha, mixture weights and branch lengths per subtree' )
+        logging.info( 'Re-optimizing alpha, mixture weights and branch lengths per subtree' )
 
         # collect iqtree tasks
         iqtree_tasks = []
@@ -232,7 +232,7 @@ def main(args):
                 processes=1,
                 memory="1GB",
                 # job resources
-                job_extra=['-V', f'-pe threaded {str(args.cores)}'],
+                job_extra=['-V', f'-pe threaded {str(args.cores)}', '-o /dev/null'],
                 walltime="99:99:99",
                 #resource_spec='h_vmem=70G',
                 queue=args.jobqueue,
@@ -397,6 +397,9 @@ def main(args):
         # during the fundi, we don't need to stitch trees together
         elif args.strategy == 'fulltree_branch_lengths':
 
+            logging.debug('Starting FullTree strategy')
+
+            iqtree_tasks = []
             # we simply just insert the
             # re-optimized alpha and mixture weights
             # from the subtree analysis
@@ -413,25 +416,31 @@ def main(args):
                 "-prec", "10",
                 "--quiet",
             ]
-
-            cluster.scale(jobs=1)
-
-            # collect tasks to be submitted
-            delayed_tasks = [ 
-                delayed(subprocess.run)(task, stderr=subprocess.DEVNULL)
-                for task in [ iqtree_command ]
-            ]
-
             logging.info( ' '.join(iqtree_command) )
+            iqtree_tasks.append(iqtree_command)
+            logging.debug(iqtree_tasks)
+
+            cluster.scale(jobs=2)
+            # collect tasks to be submitted
+            delayed_tasks = [
+                # delayed(subprocess.run)(task, stderr=subprocess.DEVNULL)
+                delayed(subprocess.run)(task)
+                for task in iqtree_tasks
+            ]
+            # collect task to be submitted
+            # delayed_task = delayed(subprocess.run)(iqtree_command, stderr=subprocess.DEVNULL)
+
 
             # Compute the delayed tasks in parallel
             futures = client.compute(delayed_tasks)
+            # futures = client.compute(delayed_task)
             # Gather results
             client.gather(futures)
-            client.close()
-            # Close the two workers
-            cluster.scale(jobs=0)
-            cluster.close()
+            client.shutdown()
+            # client.close()
+            # # Close the two workers
+            # cluster.scale(jobs=0)
+            # cluster.close()
 
 
     except NameError as e:
@@ -766,17 +775,16 @@ def create_custom_nexus_file(
 
 
 def run_iqtrees(
-    trees,
-    alignment_address,
-    model: str,
-    avg_alpha: float,
-    nexus_file,
-    cores: int,
-    leaves,
-    outdir: str,
-    cluster=None,
-    client=None,
-):
+        trees,
+        alignment_address,
+        model: str,
+        avg_alpha: float,
+        nexus_file,
+        cores: int,
+        leaves,
+        outdir: str,
+        cluster=None,
+        client=None):
     # collect iqtree tasks
     iqtree_tasks = []
     for index, tree in enumerate(trees, start=1):
@@ -934,8 +942,12 @@ def generate_summary(summary_filename, tree_count, model, increment, taxa_groups
     tree_properties = []
     for index in range(1, tree_count + 1):
         formatted_index = f"{index:03d}"
-        with open(f"{outdir}/tree_{formatted_index}.log", "r") as iqtree_file:
-            for line in iqtree_file:
+        with open(f"{outdir}/tree_{formatted_index}.log", "r") as iqtree_log:
+            for line in iqtree_log:
+                if "Gamma shape alpha" in line:
+                    words = line.split()
+                    alpha = float(words[3])
+                    continue
                 if "Best FunDi parameter rho:" in line:
                     words = line.split()
                     rho_value = float(words[4])
@@ -951,10 +963,10 @@ def generate_summary(summary_filename, tree_count, model, increment, taxa_groups
         # this is a problem with large datasets discovered and debugged on perun
         if not log_likelihood:
             raise NameError("Insufficient memory allocation!")
-        tree_properties.append((formatted_index, log_likelihood, rho_value, central_branch_length))
+        tree_properties.append((formatted_index, alpha, log_likelihood, rho_value, central_branch_length))
 
     # sort the trees based on largest funDi log-likelihood
-    sorted_tree_properties = sorted(tree_properties, key=lambda attr_tuple: attr_tuple[1], reverse=True)
+    sorted_tree_properties = sorted(tree_properties, key=lambda attr_tuple: attr_tuple[2], reverse=True)
 
     # we're overwriting the initial .png image,
     # but only for the best tree
@@ -973,8 +985,9 @@ def generate_summary(summary_filename, tree_count, model, increment, taxa_groups
     # best_tree.render(file_name=f"tree_{best_tree_index}.png", tree_style=tree_style, units="px", w=800, h=1000)
 
     # reroot best tree and overwrite its treefile ?
-    best_tree = conform_iqtree_tree(f"{outdir}/tree_{sorted_tree_properties[0][0]}.treefile", taxa_groups[0])
-    best_tree.write(format=1, outfile=f"{outdir}/tree_{sorted_tree_properties[0][0]}.treefile")
+    best_index: str = sorted_tree_properties[0][0]
+    best_tree = conform_iqtree_tree(f"{outdir}/tree_{best_index}.treefile", taxa_groups[0])
+    best_tree.write(format=1, outfile=f"{outdir}/tree_{best_index}.treefile")
 
     # create and write to some_tree.summary.txt
     with open(f'{outdir}/{summary_filename}', "w") as summary_file:
@@ -983,13 +996,17 @@ def generate_summary(summary_filename, tree_count, model, increment, taxa_groups
         summary_file.write(f"Model used: {model}\n")
         summary_file.write(f"Increment used: {increment}\n")
 
-        best_index = sorted_tree_properties[0][0]
+        best_alpha: float            = sorted_tree_properties[0][1]
+        best_fundi_ll: float         = sorted_tree_properties[0][2]
+        best_rho: float              = sorted_tree_properties[0][3]
+        best_fundi_branch_len: float = sorted_tree_properties[0][4]
 
         summary_file.write(
             f"Best tree: Tree {best_index}\n"
-            f"Best funDi log-likelihood: {sorted_tree_properties[0][1]}\n"
-            f"rho: {sorted_tree_properties[0][2]}.\n"
-            f"Central branch length: {sorted_tree_properties[0][3]}\n"
+            f"Best gamma shape alpha: Tree {best_alpha:.3f}\n"
+            f"Best funDi log-likelihood: {best_fundi_ll:.3f}\n"
+            f"Best rho: {best_rho:.3f}\n"
+            f"Best Central branch length: {best_fundi_branch_len:.3f}\n"
         )
 
         summary_file.write("\nRooted best tree:\n")
