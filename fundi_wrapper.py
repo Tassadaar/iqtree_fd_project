@@ -63,7 +63,7 @@ parser.add_argument( "-mdef", "--nexus",
 )
 parser.add_argument( "-strat", "--strategy",
     required=False, type=str, default='subtree_branch_lengths',
-    help="Are we using branch lengths from the full tree or the subtrees?"
+    help="Are we using branch lengths from the full tree ('fulltree_branch_lengths') or the subtrees (subtree_branch_lengths)?"
 )
 
 # performance
@@ -111,7 +111,8 @@ arguments = parser.parse_args()
 logging.basicConfig(
         filename='fundi_wrapper.log',
         # filemode='w',
-        level=logging.DEBUG,
+        # level=logging.DEBUG,
+        level=logging.INFO,
         format='%(asctime)s -- %(levelname)s: %(message)s'
 )
 
@@ -1003,7 +1004,7 @@ def generate_summary(summary_filename, tree_count, model, increment, taxa_groups
 
         summary_file.write(
             f"Best tree: Tree {best_index}\n"
-            f"Best gamma shape alpha: Tree {best_alpha:.3f}\n"
+            f"Best gamma shape alpha: {best_alpha:.3f}\n"
             f"Best funDi log-likelihood: {best_fundi_ll:.3f}\n"
             f"Best rho: {best_rho:.3f}\n"
             f"Best Central branch length: {best_fundi_branch_len:.3f}\n"
