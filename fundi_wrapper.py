@@ -198,6 +198,7 @@ def main(args):
         for subtree in ["subtree_a", "subtree_b"]:
             iqtree_command = [
                 "iqtree2",
+                "-seed", "654321",
                 "-s", f"{args.outdir}/{subtree}.aln",
                 "-te", f"{args.outdir}/{subtree}.newick",
                 "-m", "+".join(models),
@@ -400,6 +401,7 @@ def main(args):
             # from the subtree analysis
             iqtree_command = [
                 "iqtree2",
+                "-seed", "654321",
                 "-s", args.alignment,
                 "-te", args.tree,
                 "-m", "+".join(models),
@@ -789,6 +791,7 @@ def run_iqtrees(
         tree.write(format=1, outfile=f"{outdir}/tree_{formatted_index}.tree")
         iqtree_cmd = [
             "iqtree2",
+            "-seed", "654321",
             "-s", alignment_address,
             "--tree-fix", f"{outdir}/tree_{formatted_index}.tree",
             "-m", model,
