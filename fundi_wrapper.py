@@ -23,7 +23,7 @@ import logging
 import shutil
 import time
 import concurrent.futures
-from typing import List, Set
+from typing import List, Set, Tuple
 
 # stuff you need to install
 from ete3 import Tree, TreeNode #, TreeStyle
@@ -66,6 +66,10 @@ parser.add_argument( "-strat", "--strategy",
     required=False, type=str, default='subtree_branch_lengths',
     help="Are we using branch lengths from the full tree ('fulltree_branch_lengths') or the subtrees (subtree_branch_lengths)?"
 )
+parser.add_argument( "--seed",
+    required=False, default=654321, type=int,
+    help="Seed given to all IQTREE runs in this wrapper. Defaults to 654321"
+)
 
 # performance
 parser.add_argument( "-nt", "--cores",
@@ -102,6 +106,7 @@ parser.add_argument( "-k", "--keep",
 # output
 parser.add_argument( "-o", "--outdir",
     required=True,
+    type=str,
     help="Name of output directory"
 )
 
@@ -128,6 +133,7 @@ for msg in (
         f'-m/--model        {arguments.model}\t'
         f'-mdef/--nexus     {arguments.nexus}\t'
         f'-strat/--strategy {arguments.strategy}\t'
+        f'--seed            {arguments.seed}\t'
         f'-o/--outdir       {arguments.outdir}\t'
         f'-nt/--cores       {arguments.cores}\t'
         f'-k/--keep         {arguments.keep}\n'
@@ -199,7 +205,7 @@ def main(args):
         for subtree in ["subtree_a", "subtree_b"]:
             iqtree_command = [
                 "iqtree2",
-                "-seed", "654321",
+                "-seed", str(args.seed),
                 "-s", f"{args.outdir}/{subtree}.aln",
                 "-te", f"{args.outdir}/{subtree}.newick",
                 "-m", "+".join(models),
@@ -375,6 +381,7 @@ def main(args):
                     model="+".join(models),
                     avg_alpha=avg_alpha,
                     nexus_file=f'{args.outdir}/re-optimized-model.nexus',
+                    seed=args.seed,
                     outdir=args.outdir,
                     cores=args.cores,
                     leaves=a_tree.get_leaf_names(),
@@ -388,6 +395,7 @@ def main(args):
                     model="+".join(models),
                     avg_alpha=avg_alpha,
                     nexus_file=f'{args.outdir}/re-optimized-model.nexus',
+                    seed=args.seed,
                     cores=args.cores,
                     leaves=a_tree.get_leaf_names(),
                     outdir=args.outdir,
@@ -399,6 +407,12 @@ def main(args):
             # To get the number of trees generated, we take number of proportions to the power of 2
             summary_name = args.alignment.replace('.aln','') + '.summary.txt'
             generate_summary(summary_name, len(trees), "+".join(models), args.increment, defined_groups, args.keep, args.outdir)
+
+            # report key results to log
+            best_log_file = args.alignment.replace('.aln','') + '.best_tree.log'
+            alpha, rho, fundi_brlen, fundi_ll = parse_iqtree_log(f'{args.outdir}/{best_log_file}')
+            logging.info('Model Strategy Seed Alpha Rho FunDiBranchLength FunDiLogLikelihood')
+            logging.info(f'{"+".join(models)} SubTree,{args.seed} {alpha:.3f} {rho:.3f} {fundi_brlen} {fundi_ll}')
 
         # if however we want to estimate branch lengths
         # during the fundi, we don't need to stitch trees together
@@ -412,7 +426,7 @@ def main(args):
             # from the subtree analysis
             iqtree_command = [
                 "iqtree2",
-                "-seed", "654321",
+                "-seed", str(args.seed),
                 "-s", args.alignment,
                 "-te", args.tree,
                 "-m", "+".join(models),
@@ -450,6 +464,11 @@ def main(args):
             # cluster.scale(jobs=0)
             # cluster.close()
 
+            # report key results to log
+            best_log_file = 'fundi_full_tree.log'
+            alpha, rho, fundi_brlen, fundi_ll = parse_iqtree_log(f'{args.outdir}/{best_log_file}')
+            logging.info('Model Strategy Seed Alpha Rho FunDiBranchLength FunDiLogLikelihood')
+            logging.info(f'{"+".join(models)} FullTree {args.seed} {alpha:.3f} {rho:.3f} {fundi_brlen} {fundi_ll}')
 
     except NameError as e:
         print(f"Panda-monium! {e}")
@@ -790,6 +809,7 @@ def run_iqtrees(
         model: str,
         avg_alpha: float,
         nexus_file,
+        seed: int,
         cores: int,
         leaves,
         outdir: str,
@@ -804,7 +824,7 @@ def run_iqtrees(
         tree.write(format=1, outfile=f"{outdir}/tree_{formatted_index}.tree")
         iqtree_cmd = [
             "iqtree2",
-            "-seed", "654321",
+            "-seed", str(seed),
             "-s", alignment_address,
             "--tree-fix", f"{outdir}/tree_{formatted_index}.tree",
             "-m", model,
@@ -946,6 +966,28 @@ def run_iqtrees_par(
     print()
 
 
+def parse_iqtree_log(logfile: str) -> Tuple[float, float, float, float]:
+    with open(logfile, "r") as iqtree_log:
+        for line in iqtree_log:
+            if "Gamma shape alpha" in line:
+                words = line.split()
+                alpha = float(words[3])
+                continue
+            if "Best FunDi parameter rho:" in line:
+                words = line.split()
+                rho_value = float(words[4])
+                continue
+            if "Best FunDi central branch length:" in line:
+                words = line.split()
+                central_branch_length = float(words[5])
+                continue
+            if "FunDi log-likelihood:" in line:
+                words = line.split()
+                log_likelihood = float(words[2])
+                break
+    return alpha, rho_value, central_branch_length, log_likelihood
+
+
 def generate_summary(summary_filename, tree_count, model, increment, taxa_groups, keep, outdir: str) -> None:
 
     # gather for each generated stitched tree,
@@ -953,24 +995,9 @@ def generate_summary(summary_filename, tree_count, model, increment, taxa_groups
     tree_properties = []
     for index in range(1, tree_count + 1):
         formatted_index = f"{index:03d}"
-        with open(f"{outdir}/tree_{formatted_index}.log", "r") as iqtree_log:
-            for line in iqtree_log:
-                if "Gamma shape alpha" in line:
-                    words = line.split()
-                    alpha = float(words[3])
-                    continue
-                if "Best FunDi parameter rho:" in line:
-                    words = line.split()
-                    rho_value = float(words[4])
-                    continue
-                if "Best FunDi central branch length:" in line:
-                    words = line.split()
-                    central_branch_length = float(words[5])
-                    continue
-                if "FunDi log-likelihood:" in line:
-                    words = line.split()
-                    log_likelihood = float(words[2])
-                    break
+        iqtree_log = f'{outdir}/tree_{formatted_index}.log'
+        alpha, rho_value, central_branch_length, log_likelihood = parse_iqtree_log(iqtree_log)
+        # with open(f"{outdir}/tree_{formatted_index}.log", "r") as iqtree_log:
         # this is a problem with large datasets discovered and debugged on perun
         if not log_likelihood:
             raise NameError("Insufficient memory allocation!")
@@ -1036,30 +1063,15 @@ def generate_summary(summary_filename, tree_count, model, increment, taxa_groups
     # print("Summary generated under \"summary.txt\".")
     # print(f"Summary generated under \"{summary_filename}\".")
 
-    # subprocess.run(["mv", f"tree_{best_index}.treefile", "best_tree.treefile"])
-    # subprocess.run(["mv", f"tree_{best_index}.iqtree", "best_tree.iqtree"])
-    # subprocess.run(["mv", f"tree_{best_index}.log", "best_tree.log"])
-    # subprocess.run(["mv", f"tree_{best_index}.ckp.gz", "best_tree.ckp.gz"])
     alignment_index = summary_filename.replace('.summary.txt','')
     shutil.copy(f"{outdir}/tree_{best_index}.treefile", f"{outdir}/{alignment_index}.best_tree.treefile")
     shutil.copy(f"{outdir}/tree_{best_index}.iqtree",   f"{outdir}/{alignment_index}.best_tree.iqtree")
     shutil.copy(f"{outdir}/tree_{best_index}.log",      f"{outdir}/{alignment_index}.best_tree.log")
     shutil.copy(f"{outdir}/tree_{best_index}.ckp.gz",   f"{outdir}/{alignment_index}.best_tree.ckp.gz")
-    # subprocess.run(["cp", f"tree_{best_index}.treefile", f"{alignment_index}.best_tree.treefile"])
-    # subprocess.run(["cp", f"tree_{best_index}.iqtree", f"{alignment_index}.best_tree.iqtree"])
-    # subprocess.run(["cp", f"tree_{best_index}.log", f"{alignment_index}.best_tree.log"])
-    # subprocess.run(["cp", f"tree_{best_index}.ckp.gz", f"{alignment_index}.best_tree.ckp.gz"])
 
     if not keep:
         shutil.rmtree(outdir)
-    # if keep:
-    #     return
 
-    # Get a list of all filenames matching tree_*.*
-    # then constructs the command by appending these filenames to ["rm", "-f"].
-    # files = glob.glob("tree_*.*") + glob.glob("subtree*.*") + glob.glob("dask-worker*") + ["re-optimized-model.nexus"]
-    # if files:
-        # subprocess.run(["rm", "-rf"] + files)
 
 
 MODEL_MIXTURE_DB = """
@@ -1318,4 +1330,4 @@ if __name__ == "__main__":
     main(arguments)
     end_time = time.time()
     logging.info(f"Runtime: {end_time - start_time} seconds")
-    # print(f"\nRuntime: {end_time - start_time}")
+    shutil.copy('fundi_wrapper.log', arguments.outdir + '/fundi_wrapper.log')
