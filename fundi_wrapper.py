@@ -23,6 +23,7 @@ import logging
 import shutil
 import time
 import concurrent.futures
+from typing import List, Set
 
 # stuff you need to install
 from ete3 import Tree, TreeNode #, TreeStyle
@@ -110,7 +111,7 @@ arguments = parser.parse_args()
 # configure logger
 logging.basicConfig(
         filename='fundi_wrapper.log',
-        # filemode='w',
+        filemode='w',
         # level=logging.DEBUG,
         level=logging.INFO,
         format='%(asctime)s -- %(levelname)s: %(message)s'
@@ -164,10 +165,10 @@ def main(args):
 
         # validate and load alignment and definition file
         alignment = validate_alignment(master_tree, args.alignment)
-        defined_groups = validate_def_file(master_tree, args.definition)
+        defined_groups: List[Set[str]] = validate_def_file(master_tree, args.definition)
 
         # parse model. Syntax: Rate Matrix+Mixture Model+Rate Heterogeneity
-        models: list[str] = args.model.split("+")
+        models: List[str] = args.model.split("+")
 
         # --- SPLIT TREE AND ALIGNMENT BASED ON DEFINITION FILE ---
         logging.info( 'Splitting input tree and alignment into two subtrees and subalignments\n' )
@@ -207,6 +208,7 @@ def main(args):
                 "-nt", str(args.cores),
                 "-prec", "10",
                 "--quiet",
+                "--keep-ident",
             ]
             # sometimes the user wants to use a custom model defined in a NEXUS file
             if args.nexus:
@@ -273,6 +275,15 @@ def main(args):
         a_weight, b_weight  = calculate_weights(a_tree, b_tree)
         avg_alpha: float    = calculate_weighted_average_alpha(f"{args.outdir}/subtree_a.iqtree", f"{args.outdir}/subtree_b.iqtree", a_weight, b_weight)
         avg_mixture_weights = calculate_weighted_average_mixture_weights(f"{args.outdir}/subtree_a.iqtree", f"{args.outdir}/subtree_b.iqtree", a_weight, b_weight)
+        #: dict[str,float]
+
+        logging.info(f'Re-optimized alpha: {str(avg_alpha)}')
+        logging.info('Re-optimized class weights:')
+        logging.info('Class No.\tRe-optimized weight:')
+        for class_no, new_weight in avg_mixture_weights.items():
+            logging.info(f'{class_no}\t{new_weight}')
+            # class_name = mixture_model_freqs[class_no][0]
+            # weight_statements.append( f"fundi_{class_name}:1:{str(new_weight)}" )
 
 
         # --- CREATE NEXUS MODEL FILE FROM RE-OPTIMIZED ALPHA AND MIXTURE WEIGHTS ---
@@ -499,13 +510,14 @@ def validate_alignment(tree, alignment_file):
     return alignment
 
 
-def validate_def_file(tree, def_file):
+def validate_def_file(tree, def_file) -> List[Set[str]]:
     # store definition file in memory
     # as a list of two sets of taxa
     # this ensures uniqueness, assuming that order does not matter with def files
+
     with open(def_file, "r") as file:
-        # taxa_groups: list[set[str]] = []
-        taxa_groups = []
+        taxa_groups: List[Set[str]] = []
+        # taxa_groups = []
 
         for line in file:
             # clean line by removing trailing whitespace, comma or newline characters
@@ -553,10 +565,11 @@ def validate_def_file(tree, def_file):
     if len(taxa_groups[0]) == 1 or len(taxa_groups[1]) == 1:
         raise ValueError("Definition file has at least one partition with only 1 taxon!")
 
+
     return taxa_groups
 
 
-def get_ref_subtrees(master_tree, leaf_groups):
+def get_ref_subtrees(master_tree, leaf_groups: List[Set[str]]):
     # this is good practice, but it currently breaks the code
     # master_tree_copy = master_tree.copy("deepcopy")
 
