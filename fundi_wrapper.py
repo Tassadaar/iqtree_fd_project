@@ -23,7 +23,6 @@ import logging
 import shutil
 import time
 import concurrent.futures
-from typing import List, Set, Tuple
 
 # stuff you need to install
 from ete3 import Tree, TreeNode #, TreeStyle
@@ -33,6 +32,8 @@ from dask_jobqueue import SGECluster
 from dask.distributed import Client
 from dask import delayed
 
+# for type annotation
+from typing import List, Set, Tuple
 
 # argument parser
 parser = argparse.ArgumentParser(description="Wrapper for FunDi fix")
@@ -69,6 +70,10 @@ parser.add_argument( "-strat", "--strategy",
 parser.add_argument( "--seed",
     required=False, default=654321, type=int,
     help="Seed given to all IQTREE runs in this wrapper. Defaults to 654321"
+)
+parser.add_argument( "--iqtree_path",
+    required=False, default='iqtree', type=str,
+    help="Path to iqtree binary you would like to use. Defaults simply to 'iqtree'"
 )
 
 # performance
@@ -126,6 +131,8 @@ logging.basicConfig(
 # log how fundi_wrapper was called
 logging.info('fundi_wrapper.py was called with the following parameters:\n')
 for msg in (
+        f'--iqtree_path     {arguments.iqtree_path}\t'
+        # f'--iqtree_path     iqtree2\t'
         f'-te/--tree        {arguments.tree}\t'
         f'-s/--alignment    {arguments.alignment}\t'
         f'-d/--definition   {arguments.definition}\t'
@@ -204,7 +211,8 @@ def main(args):
         iqtree_tasks = []
         for subtree in ["subtree_a", "subtree_b"]:
             iqtree_command = [
-                "iqtree2",
+                # "iqtree2",
+                args.iqtree_path,
                 "-seed", str(args.seed),
                 "-s", f"{args.outdir}/{subtree}.aln",
                 "-te", f"{args.outdir}/{subtree}.newick",
@@ -212,6 +220,7 @@ def main(args):
                 "-mwopt",
                 "--prefix", f'{args.outdir}/{subtree}',
                 "-nt", str(args.cores),
+                "-mem", "200G",
                 "-prec", "10",
                 "--quiet",
                 "--keep-ident",
@@ -226,6 +235,7 @@ def main(args):
         # the user wants to run the fundi_wrapper
         # on a computer cluster. Hence, use dask
         if args.jobqueue:
+            logging.info( iqtree_tasks )
 
             # Configure the SGE cluster
             # the cluster object contains a scheduler!
@@ -236,7 +246,8 @@ def main(args):
                 processes=1,
                 memory="1GB",
                 # job resources
-                job_extra=['-V', f'-pe threaded {str(args.cores)}', '-o /dev/null'],
+                # job_extra=['-V', f'-pe threaded {str(args.cores)}', '-o /dev/null'],
+                job_extra=['-V', f'-pe threaded {str(args.cores)}' ],
                 walltime="99:99:99",
                 #resource_spec='h_vmem=70G',
                 queue=args.jobqueue,
@@ -246,6 +257,7 @@ def main(args):
             client = Client(cluster)
             # Scale the cluster to the desired number of workers
             cluster.scale(jobs=2)
+            logging.info('SGECluster launched and scaled to two workers')
 
             # collect tasks to be submitted
             delayed_tasks = [ 
@@ -255,8 +267,10 @@ def main(args):
 
             # Compute the delayed tasks in parallel
             futures = client.compute(delayed_tasks)
+            logging.info('Statement after client.compute()')
             # Gather results
             client.gather(futures)
+            logging.info('Statement after client.gather()')
             # Close the two workers
             cluster.scale(jobs=0)
 
@@ -369,6 +383,7 @@ def main(args):
                     all_cores=args.cores,
                     memory=args.memory,
                     leaves=a_tree.get_leaf_names(),
+                    iqtree_path=args.iqtree_path,
                 )
 
             # if we want to submit trees to a computer cluster
@@ -385,6 +400,7 @@ def main(args):
                     outdir=args.outdir,
                     cores=args.cores,
                     leaves=a_tree.get_leaf_names(),
+                    iqtree_path=args.iqtree_path,
                 )
 
             ## sequential mode
@@ -399,17 +415,24 @@ def main(args):
                     cores=args.cores,
                     leaves=a_tree.get_leaf_names(),
                     outdir=args.outdir,
+                    # iqtree_path='iqtree2',
+                    iqtree_path=args.iqtree_path,
                 )
 
             # --- GENERATE SUMMARY. WHICH STITCHED TREE HAS THE HIGHEST LIKELIHOOD? ---
             logging.info( 'Generating summary file' )
 
             # To get the number of trees generated, we take number of proportions to the power of 2
-            summary_name = args.alignment.replace('.aln','') + '.summary.txt'
+            # summary_name = args.alignment.replace('.aln','') + '.summary.txt'
+            # summary_name = args.alignment.replace('.fasta','') + '.summary.txt'
+            summary_name = args.alignment + '.FunDiWrapper.Summary.txt'
             generate_summary(summary_name, len(trees), "+".join(models), args.increment, defined_groups, args.keep, args.outdir)
+            # generate summary also creates '___.best_tree.log file'
 
             # report key results to log
-            best_log_file = args.alignment.replace('.aln','') + '.best_tree.log'
+            # best_log_file = args.alignment.replace('.aln','') + '.best_tree.log'
+            best_log_file = args.alignment.replace('.fasta','') + '.best_tree.log'
+            logging.info(f'Best Tree Log File: {best_log_file}')
             alpha, rho, fundi_brlen, fundi_ll = parse_iqtree_log(f'{args.outdir}/{best_log_file}')
             logging.info('Model Strategy Seed Alpha Rho FunDiBranchLength FunDiLogLikelihood')
             logging.info(f'{"+".join(models)} SubTree,{args.seed} {alpha:.3f} {rho:.3f} {fundi_brlen} {fundi_ll}')
@@ -425,7 +448,8 @@ def main(args):
             # re-optimized alpha and mixture weights
             # from the subtree analysis
             iqtree_command = [
-                "iqtree2",
+                # "iqtree2",
+                args.iqtree_path,
                 "-seed", str(args.seed),
                 "-s", args.alignment,
                 "-te", args.tree,
@@ -433,6 +457,8 @@ def main(args):
                 "-mdef", f'{args.outdir}/re-optimized-model.nexus',
                 "-a", str(avg_alpha),
                 "--fundi", f"{','.join(defined_groups[0])},estimate",
+                "--fundi-init-rho", str(0.5),
+                "--fundi-epsilon", '1e-6',
                 "--prefix", f'{args.outdir}/fundi_full_tree',
                 "-nt", str(args.cores),
                 "-prec", "10",
@@ -470,11 +496,11 @@ def main(args):
             logging.info('Model Strategy Seed Alpha Rho FunDiBranchLength FunDiLogLikelihood')
             logging.info(f'{"+".join(models)} FullTree {args.seed} {alpha:.3f} {rho:.3f} {fundi_brlen} {fundi_ll}')
 
-    except NameError as e:
-        print(f"Panda-monium! {e}")
+    # except NameError as e:
+    #     print(f"Panda-monium! {e}")
 
-    except ValueError as e:
-        print(f"Fatal: {e} Check if inputs are valid!")
+    # except ValueError as e:
+    #     print(f"Fatal: {e} Check if inputs are valid!")
 
     except FileNotFoundError as e:
         print(f"File not found! {e}")
@@ -813,32 +839,41 @@ def run_iqtrees(
         cores: int,
         leaves,
         outdir: str,
+        iqtree_path: str,
         cluster=None,
-        client=None):
+        client=None,
+):
     # collect iqtree tasks
     iqtree_tasks = []
     for index, tree in enumerate(trees, start=1):
-        formatted_index = f"{index:03d}"
+        formatted_index = f"{index:04d}"
         # render image of stitched-together-tree
         # tree.render(f"subtree_{i}.png") not supported on perun
         tree.write(format=1, outfile=f"{outdir}/tree_{formatted_index}.tree")
         iqtree_cmd = [
-            "iqtree2",
+            # "iqtree2",
+            iqtree_path,
             "-seed", str(seed),
             "-s", alignment_address,
-            "--tree-fix", f"{outdir}/tree_{formatted_index}.tree",
+            "-te", f"{outdir}/tree_{formatted_index}.tree",
             "-m", model,
             "-a", str(avg_alpha),
             "--mdef", nexus_file,
             "-blfix",
-            "--fundi", f"{','.join(leaves)},estimate",
+            "--fundi-init-rho", str(0.5),
+            "--fundi-init-branch", str(0.01),
+            "--fundi-epsilon", '1e-6',
             "-nt", str(cores),
+            "-mem", "40G",
             "--prefix", f"{outdir}/tree_{formatted_index}",
             "-prec", "10",
-            "--quiet"
+            "--quiet",
+            "--fundi", f"{','.join(leaves)},estimate",
             # "-redo",
         ]
         iqtree_tasks.append(iqtree_cmd)
+        logging.info( ' '.join(iqtree_cmd) )
+        # logging.info(iqtree_cmd)
 
     # submit iqtrees to cluster
     if cluster and client:
@@ -870,6 +905,7 @@ def run_iqtrees(
 
 
 def run_iqtrees_par(
+        iqtree_path,
         trees,
         alignment_address,
         avg_alpha,
@@ -894,9 +930,10 @@ def run_iqtrees_par(
     # generate first iqtree command
     trees[0].write(format=1, outfile="tree_001.tree")
     first_iqtree_command = [
-        "iqtree2",
+        # "iqtree2",
+        iqtree_path,
         "-s", alignment_address,
-        "--tree-fix", "tree_001.tree",
+        "-te", "tree_001.tree",
         "-m", f"{model}{{{avg_alpha}}}",
         "--mdef", nexus_file,
         "-nt", f"{all_cores}",
@@ -904,6 +941,9 @@ def run_iqtrees_par(
         "-prec", "10",
         "-blfix",
         "--fundi", f"{','.join(leaves)},estimate",
+        "--fundi-init-rho", str(0.5),
+        "--fundi-init-branch", str(0.01),
+        "--fundi-epsilon", '1e-6',
         "--quiet"
         # "-redo",
     ]
@@ -930,9 +970,10 @@ def run_iqtrees_par(
         # tree.render(f"tree_{i}.png") not supported on perun
         tree.write(format=1, outfile=f"tree_{formatted_index}.tree")
         iqtree_command = [
-            "iqtree2",
+            # "iqtree2",
+            iqtree_path,
             "-s", alignment_address,
-            "--tree-fix", f"tree_{formatted_index}.tree",
+            "-te", f"tree_{formatted_index}.tree",
             "-m", f"{model}{{{avg_alpha}}}",
             "--mdef", nexus_file,
             "-nt", f"{cores}",
@@ -940,6 +981,9 @@ def run_iqtrees_par(
             "-prec", "10",
             "-blfix",
             "--fundi", f"{','.join(leaves)},estimate",
+            "--fundi-init-rho", str(0.5),
+            "--fundi-init-branch", str(0.01),
+            "--fundi-epsilon", '1e-6',
             "-redo",
             "--quiet"
         ]
@@ -994,7 +1038,7 @@ def generate_summary(summary_filename, tree_count, model, increment, taxa_groups
     # the rho, central branch length and log likelihood
     tree_properties = []
     for index in range(1, tree_count + 1):
-        formatted_index = f"{index:03d}"
+        formatted_index = f"{index:04d}"
         iqtree_log = f'{outdir}/tree_{formatted_index}.log'
         alpha, rho_value, central_branch_length, log_likelihood = parse_iqtree_log(iqtree_log)
         # with open(f"{outdir}/tree_{formatted_index}.log", "r") as iqtree_log:
@@ -1027,7 +1071,7 @@ def generate_summary(summary_filename, tree_count, model, increment, taxa_groups
     best_tree = conform_iqtree_tree(f"{outdir}/tree_{best_index}.treefile", taxa_groups[0])
     best_tree.write(format=1, outfile=f"{outdir}/tree_{best_index}.treefile")
 
-    # create and write to some_tree.summary.txt
+    # create and write to some_tree.Summary.txt
     with open(f'{outdir}/{summary_filename}', "w") as summary_file:
 
         summary_file.write(f"Trees generated: {tree_count}\n")
@@ -1060,10 +1104,8 @@ def generate_summary(summary_filename, tree_count, model, increment, taxa_groups
                                f"rho: {sorted_tree_properties[index][2]}; "
                                f"central branch length: {sorted_tree_properties[index][3]}\n")
 
-    # print("Summary generated under \"summary.txt\".")
-    # print(f"Summary generated under \"{summary_filename}\".")
 
-    alignment_index = summary_filename.replace('.summary.txt','')
+    alignment_index = summary_filename.replace('.Summary.txt','')
     shutil.copy(f"{outdir}/tree_{best_index}.treefile", f"{outdir}/{alignment_index}.best_tree.treefile")
     shutil.copy(f"{outdir}/tree_{best_index}.iqtree",   f"{outdir}/{alignment_index}.best_tree.iqtree")
     shutil.copy(f"{outdir}/tree_{best_index}.log",      f"{outdir}/{alignment_index}.best_tree.log")
