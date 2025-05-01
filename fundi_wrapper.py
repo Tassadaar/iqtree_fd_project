@@ -118,9 +118,15 @@ parser.add_argument( "-o", "--outdir",
 arguments = parser.parse_args()
 
 
+# create out directory
+try:
+    os.makedirs(arguments.outdir, exist_ok=True)
+except PermissionError:
+    print(f"Permission denied: Unable to create '{arguments.outdir}'")
+
 # configure logger
 logging.basicConfig(
-        filename='fundi_wrapper.log',
+        filename=f'{arguments.outdir}/{arguments.alignment}.fundi_wrapper.log',
         filemode='w',
         # level=logging.DEBUG,
         level=logging.INFO,
@@ -164,337 +170,332 @@ else:
 
 
 def main(args):
+
+    # --- PROCESS COMMAND LINE ARGUMENTS ---
+    logging.info( 'Loading and validating input tree, alignment and definition file' )
+
+    # load tree
     try:
+        master_tree = Tree(args.tree)
+    except NewickError:
+        logging.critical(f'{args.tree} can not be parsed by ETE3, please reformat your tree')
+        sys.exit()
 
-        # --- PROCESS COMMAND LINE ARGUMENTS ---
-        logging.info( 'Loading and validating input tree, alignment and definition file' )
+    # validate and load alignment and definition file
+    alignment = validate_alignment(master_tree, args.alignment)
+    defined_groups: List[Set[str]] = validate_def_file(master_tree, args.definition)
 
-        # load tree
-        try:
-            master_tree = Tree(args.tree)
-        except NewickError:
-            logging.critical(f'{args.tree} can not be parsed by ETE3, please reformat your tree')
-            sys.exit()
+    # parse model. Syntax: Rate Matrix+Mixture Model+Rate Heterogeneity
+    models: List[str] = args.model.split("+")
 
-        # validate and load alignment and definition file
-        alignment = validate_alignment(master_tree, args.alignment)
-        defined_groups: List[Set[str]] = validate_def_file(master_tree, args.definition)
-
-        # parse model. Syntax: Rate Matrix+Mixture Model+Rate Heterogeneity
-        models: List[str] = args.model.split("+")
-
-        # --- SPLIT TREE AND ALIGNMENT BASED ON DEFINITION FILE ---
-        logging.info( 'Splitting input tree and alignment into two subtrees and subalignments\n' )
-
-        # create out directory
-        try:
-            os.makedirs(args.outdir, exist_ok=True)
-        except PermissionError:
-            print(f"Permission denied: Unable to create '{args.outdir}'")
-
-        # split tree into two subtrees
-        a_tree, b_tree = get_ref_subtrees(master_tree, defined_groups)
-
-        # write subtrees into newick files
-        a_tree.write(format=1, outfile=f"{args.outdir}/subtree_a.newick")
-        b_tree.write(format=1, outfile=f"{args.outdir}/subtree_b.newick")
-
-        # split alignment into two sub-alignments
-        a_alignment, b_alignment = write_alignment_partitions(alignment, a_tree, b_tree)
-        AlignIO.write(a_alignment, f"{args.outdir}/subtree_a.aln", "fasta")
-        AlignIO.write(b_alignment, f"{args.outdir}/subtree_b.aln", "fasta")
-
-        # --- RE-OPTIMIZE ALPHA AND MIXTURE WEIGHTS ON FIXED SUBTREES ---
-        logging.info( 'Re-optimizing alpha, mixture weights and branch lengths per subtree' )
-
-        # collect iqtree tasks
-        iqtree_tasks = []
-        for subtree in ["subtree_a", "subtree_b"]:
-            iqtree_command = [
-                # "iqtree2",
-                args.iqtree_path,
-                "-seed", str(args.seed),
-                "-s", f"{args.outdir}/{subtree}.aln",
-                "-te", f"{args.outdir}/{subtree}.newick",
-                "-m", "+".join(models),
-                "-mwopt",
-                "--prefix", f'{args.outdir}/{subtree}',
-                "-nt", str(args.cores),
-                "-mem", "200G",
-                "-prec", "10",
-                "--quiet",
-                "--keep-ident",
-            ]
-            # sometimes the user wants to use a custom model defined in a NEXUS file
-            if args.nexus:
-                iqtree_command = iqtree_command + ["--mdef", args.nexus]
-            logging.info( ' '.join(iqtree_command) )
-            iqtree_tasks.append(iqtree_command)
-
-        # if we've provided a jobqueue argument,
-        # the user wants to run the fundi_wrapper
-        # on a computer cluster. Hence, use dask
-        if args.jobqueue:
-            logging.info( iqtree_tasks )
-
-            # Configure the SGE cluster
-            # the cluster object contains a scheduler!
-            # see cluster.scheduler
-            cluster = SGECluster(
-                # worker resources
-                cores=1,
-                processes=1,
-                memory="1GB",
-                # job resources
-                # job_extra=['-V', f'-pe threaded {str(args.cores)}', '-o /dev/null'],
-                job_extra=['-V', f'-pe threaded {str(args.cores)}' ],
-                walltime="99:99:99",
-                #resource_spec='h_vmem=70G',
-                queue=args.jobqueue,
-            )
-            # Create a Dask client
-            # and attach it to the cluster/scheduler
-            client = Client(cluster)
-            # Scale the cluster to the desired number of workers
-            cluster.scale(jobs=2)
-            logging.info('SGECluster launched and scaled to two workers')
-
-            # collect tasks to be submitted
-            delayed_tasks = [ 
-                delayed(subprocess.run)(task, stderr=subprocess.DEVNULL)
-                for task in iqtree_tasks
-            ]
-
-            # Compute the delayed tasks in parallel
-            futures = client.compute(delayed_tasks)
-            logging.info('Statement after client.compute()')
-            # Gather results
-            client.gather(futures)
-            logging.info('Statement after client.gather()')
-            # Close the two workers
-            cluster.scale(jobs=0)
-
-        # otherwise simply run
-        # one after the other
-        else:
-            for task in iqtree_tasks:
-                subtree = task[6]
-                logging.info(f'Running iqtree for {subtree}')
-                subprocess.run(task, stderr=subprocess.DEVNULL)
-                logging.info(f'Completed running {subtree}')
-
-        logging.info('Done with the two subtrees\n')
-
-        # check if the new trees generated by iqtree have the same topology
-        a_tree = conform_iqtree_tree(f"{args.outdir}/subtree_a.treefile", a_tree.get_children()[0].get_leaf_names())
-        b_tree = conform_iqtree_tree(f"{args.outdir}/subtree_b.treefile", b_tree.get_children()[0].get_leaf_names())
-
-        # re-estimate alpha and mixture weights by taking a
-        # weighted average of alpha and mixture weights of the first two subtrees.
-        # weighted using (n subtree_taxa / n all_taxa)
-        a_weight, b_weight  = calculate_weights(a_tree, b_tree)
-        avg_alpha: float    = calculate_weighted_average_alpha(f"{args.outdir}/subtree_a.iqtree", f"{args.outdir}/subtree_b.iqtree", a_weight, b_weight)
-        avg_mixture_weights = calculate_weighted_average_mixture_weights(f"{args.outdir}/subtree_a.iqtree", f"{args.outdir}/subtree_b.iqtree", a_weight, b_weight)
-        #: dict[str,float]
-
-        logging.info(f'Re-optimized alpha: {str(avg_alpha)}')
-        logging.info('Re-optimized class weights:')
-        logging.info('Class No.\tRe-optimized weight:')
-        for class_no, new_weight in avg_mixture_weights.items():
-            logging.info(f'{class_no}\t{new_weight}')
-            # class_name = mixture_model_freqs[class_no][0]
-            # weight_statements.append( f"fundi_{class_name}:1:{str(new_weight)}" )
+    # --- SPLIT TREE AND ALIGNMENT BASED ON DEFINITION FILE ---
+    logging.info( 'Splitting input tree and alignment into two subtrees and subalignments\n' )
 
 
-        # --- CREATE NEXUS MODEL FILE FROM RE-OPTIMIZED ALPHA AND MIXTURE WEIGHTS ---
-        logging.info( 'Creating "re-optimized-model.nexus" using re-optimized alpha and mixture weights' )
+    # split tree into two subtrees
+    a_tree, b_tree = get_ref_subtrees(master_tree, defined_groups)
 
-        # if we are using a custom model,
-        # defined in a custom NEXUS file,
-        # provided on the command line 
+    # write subtrees into newick files
+    a_tree.write(format=1, outfile=f"{args.outdir}/subtree_a.newick")
+    b_tree.write(format=1, outfile=f"{args.outdir}/subtree_b.newick")
+
+    # split alignment into two sub-alignments
+    a_alignment, b_alignment = write_alignment_partitions(alignment, a_tree, b_tree)
+    AlignIO.write(a_alignment, f"{args.outdir}/subtree_a.aln", "fasta")
+    AlignIO.write(b_alignment, f"{args.outdir}/subtree_b.aln", "fasta")
+
+    # --- RE-OPTIMIZE ALPHA AND MIXTURE WEIGHTS ON FIXED SUBTREES ---
+    logging.info( 'Re-optimizing alpha, mixture weights and branch lengths per subtree' )
+
+    # collect iqtree tasks
+    iqtree_tasks = []
+    for subtree in ["subtree_a", "subtree_b"]:
+        iqtree_command = [
+            # "iqtree2",
+            args.iqtree_path,
+            "-seed", str(args.seed),
+            "-s", f"{args.outdir}/{subtree}.aln",
+            "-te", f"{args.outdir}/{subtree}.newick",
+            "-m", "+".join(models),
+            "-mwopt",
+            "--prefix", f'{args.outdir}/{subtree}',
+            "-nt", str(args.cores),
+            "-mem", "200G",
+            "-prec", "10",
+            "--quiet",
+            "--keep-ident",
+        ]
+        # sometimes the user wants to use a custom model defined in a NEXUS file
         if args.nexus:
-            file_handle = open(args.nexus, "r")
-            key_phrase = "begin models;"
-        # if we are using a standard LG+Cx0 model
+            iqtree_command = iqtree_command + ["--mdef", args.nexus]
+        logging.info( ' '.join(iqtree_command) )
+        iqtree_tasks.append(iqtree_command)
+
+    # if we've provided a jobqueue argument,
+    # the user wants to run the fundi_wrapper
+    # on a computer cluster. Hence, use dask
+    if args.jobqueue:
+        logging.info( iqtree_tasks )
+
+        # Configure the SGE cluster
+        # the cluster object contains a scheduler!
+        # see cluster.scheduler
+        cluster = SGECluster(
+            # worker resources
+            cores=1,
+            processes=1,
+            memory="1GB",
+            # job resources
+            # job_extra=['-V', f'-pe threaded {str(args.cores)}', '-o /dev/null'],
+            job_extra=['-V', f'-pe threaded {str(args.cores)}' ],
+            walltime="99:99:99",
+            #resource_spec='h_vmem=70G',
+            queue=args.jobqueue,
+        )
+        # Create a Dask client
+        # and attach it to the cluster/scheduler
+        client = Client(cluster)
+        # Scale the cluster to the desired number of workers
+        cluster.scale(jobs=2)
+        logging.info('SGECluster launched and scaled to two workers')
+
+        # collect tasks to be submitted
+        delayed_tasks = [ 
+            delayed(subprocess.run)(task, stderr=subprocess.DEVNULL)
+            for task in iqtree_tasks
+        ]
+
+        # Compute the delayed tasks in parallel
+        futures = client.compute(delayed_tasks)
+        logging.info('Statement after client.compute()')
+        # Gather results
+        client.gather(futures)
+        logging.info('Statement after client.gather()')
+        # Close the two workers
+        cluster.scale(jobs=0)
+
+    # otherwise simply run
+    # one after the other
+    else:
+        for task in iqtree_tasks:
+            subtree = task[6]
+            logging.info(f'Running iqtree for {subtree}')
+            subprocess.run(task, stderr=subprocess.DEVNULL)
+            logging.info(f'Completed running {subtree}')
+
+    logging.info('Done with the two subtrees\n')
+
+    # check if the new trees generated by iqtree have the same topology
+    a_tree = conform_iqtree_tree(f"{args.outdir}/subtree_a.treefile", a_tree.get_children()[0].get_leaf_names())
+    b_tree = conform_iqtree_tree(f"{args.outdir}/subtree_b.treefile", b_tree.get_children()[0].get_leaf_names())
+
+    # re-estimate alpha and mixture weights by taking a
+    # weighted average of alpha and mixture weights of the first two subtrees.
+    # weighted using (n subtree_taxa / n all_taxa)
+    a_weight, b_weight  = calculate_weights(a_tree, b_tree)
+    avg_alpha: float    = calculate_weighted_average_alpha(f"{args.outdir}/subtree_a.iqtree", f"{args.outdir}/subtree_b.iqtree", a_weight, b_weight)
+    avg_mixture_weights = calculate_weighted_average_mixture_weights(f"{args.outdir}/subtree_a.iqtree", f"{args.outdir}/subtree_b.iqtree", a_weight, b_weight)
+    #: dict[str,float]
+
+    logging.info(f'Re-optimized alpha: {str(avg_alpha)}')
+    logging.info('Re-optimized class weights:')
+    logging.info('Class No.\tRe-optimized weight:')
+    for class_no, new_weight in avg_mixture_weights.items():
+        logging.info(f'{class_no}\t{new_weight}')
+        # class_name = mixture_model_freqs[class_no][0]
+        # weight_statements.append( f"fundi_{class_name}:1:{str(new_weight)}" )
+
+
+    # --- CREATE NEXUS MODEL FILE FROM RE-OPTIMIZED ALPHA AND MIXTURE WEIGHTS ---
+    logging.info( 'Creating "re-optimized-model.nexus" using re-optimized alpha and mixture weights' )
+
+    # if we are using a custom model,
+    # defined in a custom NEXUS file,
+    # provided on the command line 
+    if args.nexus:
+        file_handle = open(args.nexus, "r")
+        key_phrase = "begin models;"
+    # if we are using a standard LG+Cx0 model
+    else:
+        file_handle = io.StringIO(MODEL_MIXTURE_DB)
+        key_phrase = f"CAT-{models[1]}"
+
+    # combine class frequencies from custom model or LG+Cx0 model with 
+    # re-optimized alpha and mixture weights to make a new nexus file, called 're-optimized-model.nexus'
+    # nexus_address, models[1] = create_custom_nexus_file(avg_mixture_weights, file_handle, models[1], key_phrase)
+    create_custom_nexus_file(avg_mixture_weights, file_handle, models[1], key_phrase, args.outdir)
+
+    # update model name that will refer to the model
+    # described in 're-optimized-model.nexus'
+    models[1] = f"fundi_{models[1]}"
+
+
+    # if we use branch lengths from the subtrees,
+    # we need to stitch trees together
+    if args.strategy == 'subtree_branch_lengths':
+
+        # --- GENERATE LIST OF STITCHED-TOGETHER TREES ---
+        logging.info( 'Stitching re-optimized subtrees together into many new full trees' )
+
+        # calculate length of top branches of re-estimated subtrees
+        a_branch: float = a_tree.get_children()[0].dist + a_tree.get_children()[1].dist
+        b_branch: float = b_tree.get_children()[0].dist + b_tree.get_children()[1].dist
+        logging.info(f'Length of top branch subtree a: {a_branch}')
+        logging.info(f'Length of top branch subtree b: {b_branch}')
+
+        # generate steps (0.01, 0.02, 0.03 ... branch_length)
+        a_steps = float_range(start=args.increment, stop=a_branch, step=args.increment)
+        b_steps = float_range(start=args.increment, stop=b_branch, step=args.increment)
+
+        trees = []
+        # get alpha and beta from a cartesian product of proportions
+        for alpha, beta in itertools.product(a_steps, b_steps):
+            # set new branch lengths for a
+            a_tree.get_children()[0].dist = alpha
+            a_tree.get_children()[1].dist = a_branch - alpha
+            # set new branch lengths for b
+            b_tree.get_children()[0].dist = beta
+            b_tree.get_children()[1].dist = b_branch - beta
+            # reconstruct master tree
+            new_master_tree = TreeNode(dist=0.1)
+            new_master_tree.add_child(a_tree.copy("deepcopy"))
+            new_master_tree.add_child(b_tree.copy("deepcopy"))
+            assert new_master_tree.robinson_foulds(master_tree)[0] == 0, "The new master tree is not the same!"
+            trees.append(new_master_tree)
+        # print number of trees generated
+        logging.info(f'{len(trees)} trees were generated')
+
+
+        # --- RUN IQTREE FUNDI WITH THE RE-OPTIMIZED MODEL ON ALL STITCHED TREES --- 
+        logging.info( 'Running IQTREE with --fundi on all newly created stitched full trees with the re-optimized alpha, mixture weights and subtrees' )
+
+        # second iqtree (funDi) execution
+
+        ## parallelization (on a single node/workstation) turned out not be more cost effective,
+        ## but we keep it here because its a nice example of how to implement parallilzation
+        if args.parallelization:
+            run_iqtrees_par(
+                trees=trees,
+                alignment_address=args.alignment,
+                avg_alpha=avg_alpha,
+                model="+".join(models),
+                nexus_file=f'{args.outdir}/re-optimized-model.nexus',
+                all_cores=args.cores,
+                memory=args.memory,
+                leaves=a_tree.get_leaf_names(),
+                iqtree_path=args.iqtree_path,
+            )
+
+        # if we want to submit trees to a computer cluster
+        elif args.jobqueue:
+            run_iqtrees(
+                cluster=cluster,
+                client=client,
+                trees=trees,
+                alignment_address=args.alignment,
+                model="+".join(models),
+                avg_alpha=avg_alpha,
+                nexus_file=f'{args.outdir}/re-optimized-model.nexus',
+                seed=args.seed,
+                outdir=args.outdir,
+                cores=args.cores,
+                leaves=a_tree.get_leaf_names(),
+                iqtree_path=args.iqtree_path,
+            )
+
+        ## sequential mode
         else:
-            file_handle = io.StringIO(MODEL_MIXTURE_DB)
-            key_phrase = f"CAT-{models[1]}"
+            run_iqtrees(
+                trees=trees,
+                alignment_address=args.alignment,
+                model="+".join(models),
+                avg_alpha=avg_alpha,
+                nexus_file=f'{args.outdir}/re-optimized-model.nexus',
+                seed=args.seed,
+                cores=args.cores,
+                leaves=a_tree.get_leaf_names(),
+                outdir=args.outdir,
+                # iqtree_path='iqtree2',
+                iqtree_path=args.iqtree_path,
+            )
 
-        # combine class frequencies from custom model or LG+Cx0 model with 
-        # re-optimized alpha and mixture weights to make a new nexus file, called 're-optimized-model.nexus'
-        # nexus_address, models[1] = create_custom_nexus_file(avg_mixture_weights, file_handle, models[1], key_phrase)
-        create_custom_nexus_file(avg_mixture_weights, file_handle, models[1], key_phrase, args.outdir)
+        # --- GENERATE SUMMARY. WHICH STITCHED TREE HAS THE HIGHEST LIKELIHOOD? ---
+        logging.info( 'Generating summary file' )
 
-        # update model name that will refer to the model
-        # described in 're-optimized-model.nexus'
-        models[1] = f"fundi_{models[1]}"
+        # To get the number of trees generated, we take number of proportions to the power of 2
+        # summary_name = args.alignment.replace('.aln','') + '.summary.txt'
+        # summary_name = args.alignment.replace('.fasta','') + '.summary.txt'
+        summary_name = args.alignment + '.FunDiWrapper.Summary.txt'
+        generate_summary(summary_name, len(trees), "+".join(models), args.increment, defined_groups, args.keep, args.outdir)
+        # generate summary also creates '___.best_tree.log file'
 
+        # report key results to log
+        # best_log_file = args.alignment.replace('.aln','') + '.best_tree.log'
+        # best_log_file = args.alignment.replace('.fasta','') + '.best_tree.log'
+        best_log_file = args.alignment + '.FunDiWrapper.best_tree.log'
+        logging.info(f'Best Tree Log File: {best_log_file}')
+        alpha, rho, fundi_brlen, fundi_ll = parse_iqtree_log(f'{args.outdir}/{best_log_file}')
+        logging.info('Model Strategy Seed Alpha Rho FunDiBranchLength FunDiLogLikelihood')
+        logging.info(f'{"+".join(models)} SubTree,{args.seed} {alpha:.3f} {rho:.3f} {fundi_brlen} {fundi_ll}')
 
-        # if we use branch lengths from the subtrees,
-        # we need to stitch trees together
-        if args.strategy == 'subtree_branch_lengths':
+    # if however we want to estimate branch lengths
+    # during the fundi, we don't need to stitch trees together
+    elif args.strategy == 'fulltree_branch_lengths':
 
-            # --- GENERATE LIST OF STITCHED-TOGETHER TREES ---
-            logging.info( 'Stitching re-optimized subtrees together into many new full trees' )
+        logging.debug('Starting FullTree strategy')
 
-            # calculate length of top branches of re-estimated subtrees
-            a_branch: float = a_tree.get_children()[0].dist + a_tree.get_children()[1].dist
-            b_branch: float = b_tree.get_children()[0].dist + b_tree.get_children()[1].dist
-            logging.info(f'Length of top branch subtree a: {a_branch}')
-            logging.info(f'Length of top branch subtree b: {b_branch}')
+        iqtree_tasks = []
+        # we simply just insert the
+        # re-optimized alpha and mixture weights
+        # from the subtree analysis
+        iqtree_command = [
+            # "iqtree2",
+            args.iqtree_path,
+            "-seed", str(args.seed),
+            "-s", args.alignment,
+            "-te", args.tree,
+            "-m", "+".join(models),
+            "-mdef", f'{args.outdir}/re-optimized-model.nexus',
+            "-a", str(avg_alpha),
+            "--fundi", f"{','.join(defined_groups[0])},estimate",
+            "--fundi-init-rho", str(0.5),
+            "--fundi-epsilon", '1e-6',
+            "--prefix", f'{args.outdir}/fundi_full_tree',
+            "-nt", str(args.cores),
+            "-prec", "10",
+            "--quiet",
+        ]
+        logging.info( ' '.join(iqtree_command) )
+        iqtree_tasks.append(iqtree_command)
+        logging.debug(iqtree_tasks)
 
-            # generate steps (0.01, 0.02, 0.03 ... branch_length)
-            a_steps = float_range(start=args.increment, stop=a_branch, step=args.increment)
-            b_steps = float_range(start=args.increment, stop=b_branch, step=args.increment)
-
-            trees = []
-            # get alpha and beta from a cartesian product of proportions
-            for alpha, beta in itertools.product(a_steps, b_steps):
-                # set new branch lengths for a
-                a_tree.get_children()[0].dist = alpha
-                a_tree.get_children()[1].dist = a_branch - alpha
-                # set new branch lengths for b
-                b_tree.get_children()[0].dist = beta
-                b_tree.get_children()[1].dist = b_branch - beta
-                # reconstruct master tree
-                new_master_tree = TreeNode(dist=0.1)
-                new_master_tree.add_child(a_tree.copy("deepcopy"))
-                new_master_tree.add_child(b_tree.copy("deepcopy"))
-                assert new_master_tree.robinson_foulds(master_tree)[0] == 0, "The new master tree is not the same!"
-                trees.append(new_master_tree)
-            # print number of trees generated
-            logging.info(f'{len(trees)} trees were generated')
-
-
-            # --- RUN IQTREE FUNDI WITH THE RE-OPTIMIZED MODEL ON ALL STITCHED TREES --- 
-            logging.info( 'Running IQTREE with --fundi on all newly created stitched full trees with the re-optimized alpha, mixture weights and subtrees' )
-
-            # second iqtree (funDi) execution
-
-            ## parallelization (on a single node/workstation) turned out not be more cost effective,
-            ## but we keep it here because its a nice example of how to implement parallilzation
-            if args.parallelization:
-                run_iqtrees_par(
-                    trees=trees,
-                    alignment_address=args.alignment,
-                    avg_alpha=avg_alpha,
-                    model="+".join(models),
-                    nexus_file=f'{args.outdir}/re-optimized-model.nexus',
-                    all_cores=args.cores,
-                    memory=args.memory,
-                    leaves=a_tree.get_leaf_names(),
-                    iqtree_path=args.iqtree_path,
-                )
-
-            # if we want to submit trees to a computer cluster
-            elif args.jobqueue:
-                run_iqtrees(
-                    cluster=cluster,
-                    client=client,
-                    trees=trees,
-                    alignment_address=args.alignment,
-                    model="+".join(models),
-                    avg_alpha=avg_alpha,
-                    nexus_file=f'{args.outdir}/re-optimized-model.nexus',
-                    seed=args.seed,
-                    outdir=args.outdir,
-                    cores=args.cores,
-                    leaves=a_tree.get_leaf_names(),
-                    iqtree_path=args.iqtree_path,
-                )
-
-            ## sequential mode
-            else:
-                run_iqtrees(
-                    trees=trees,
-                    alignment_address=args.alignment,
-                    model="+".join(models),
-                    avg_alpha=avg_alpha,
-                    nexus_file=f'{args.outdir}/re-optimized-model.nexus',
-                    seed=args.seed,
-                    cores=args.cores,
-                    leaves=a_tree.get_leaf_names(),
-                    outdir=args.outdir,
-                    # iqtree_path='iqtree2',
-                    iqtree_path=args.iqtree_path,
-                )
-
-            # --- GENERATE SUMMARY. WHICH STITCHED TREE HAS THE HIGHEST LIKELIHOOD? ---
-            logging.info( 'Generating summary file' )
-
-            # To get the number of trees generated, we take number of proportions to the power of 2
-            # summary_name = args.alignment.replace('.aln','') + '.summary.txt'
-            # summary_name = args.alignment.replace('.fasta','') + '.summary.txt'
-            summary_name = args.alignment + '.FunDiWrapper.Summary.txt'
-            generate_summary(summary_name, len(trees), "+".join(models), args.increment, defined_groups, args.keep, args.outdir)
-            # generate summary also creates '___.best_tree.log file'
-
-            # report key results to log
-            # best_log_file = args.alignment.replace('.aln','') + '.best_tree.log'
-            best_log_file = args.alignment.replace('.fasta','') + '.best_tree.log'
-            logging.info(f'Best Tree Log File: {best_log_file}')
-            alpha, rho, fundi_brlen, fundi_ll = parse_iqtree_log(f'{args.outdir}/{best_log_file}')
-            logging.info('Model Strategy Seed Alpha Rho FunDiBranchLength FunDiLogLikelihood')
-            logging.info(f'{"+".join(models)} SubTree,{args.seed} {alpha:.3f} {rho:.3f} {fundi_brlen} {fundi_ll}')
-
-        # if however we want to estimate branch lengths
-        # during the fundi, we don't need to stitch trees together
-        elif args.strategy == 'fulltree_branch_lengths':
-
-            logging.debug('Starting FullTree strategy')
-
-            iqtree_tasks = []
-            # we simply just insert the
-            # re-optimized alpha and mixture weights
-            # from the subtree analysis
-            iqtree_command = [
-                # "iqtree2",
-                args.iqtree_path,
-                "-seed", str(args.seed),
-                "-s", args.alignment,
-                "-te", args.tree,
-                "-m", "+".join(models),
-                "-mdef", f'{args.outdir}/re-optimized-model.nexus',
-                "-a", str(avg_alpha),
-                "--fundi", f"{','.join(defined_groups[0])},estimate",
-                "--fundi-init-rho", str(0.5),
-                "--fundi-epsilon", '1e-6',
-                "--prefix", f'{args.outdir}/fundi_full_tree',
-                "-nt", str(args.cores),
-                "-prec", "10",
-                "--quiet",
-            ]
-            logging.info( ' '.join(iqtree_command) )
-            iqtree_tasks.append(iqtree_command)
-            logging.debug(iqtree_tasks)
-
-            cluster.scale(jobs=2)
-            # collect tasks to be submitted
-            delayed_tasks = [
-                # delayed(subprocess.run)(task, stderr=subprocess.DEVNULL)
-                delayed(subprocess.run)(task)
-                for task in iqtree_tasks
-            ]
-            # collect task to be submitted
-            # delayed_task = delayed(subprocess.run)(iqtree_command, stderr=subprocess.DEVNULL)
+        cluster.scale(jobs=2)
+        # collect tasks to be submitted
+        delayed_tasks = [
+            # delayed(subprocess.run)(task, stderr=subprocess.DEVNULL)
+            delayed(subprocess.run)(task)
+            for task in iqtree_tasks
+        ]
+        # collect task to be submitted
+        # delayed_task = delayed(subprocess.run)(iqtree_command, stderr=subprocess.DEVNULL)
 
 
-            # Compute the delayed tasks in parallel
-            futures = client.compute(delayed_tasks)
-            # futures = client.compute(delayed_task)
-            # Gather results
-            client.gather(futures)
-            client.shutdown()
-            # client.close()
-            # # Close the two workers
-            # cluster.scale(jobs=0)
-            # cluster.close()
+        # Compute the delayed tasks in parallel
+        futures = client.compute(delayed_tasks)
+        # futures = client.compute(delayed_task)
+        # Gather results
+        client.gather(futures)
+        client.shutdown()
+        # client.close()
+        # # Close the two workers
+        # cluster.scale(jobs=0)
+        # cluster.close()
 
-            # report key results to log
-            best_log_file = 'fundi_full_tree.log'
-            alpha, rho, fundi_brlen, fundi_ll = parse_iqtree_log(f'{args.outdir}/{best_log_file}')
-            logging.info('Model Strategy Seed Alpha Rho FunDiBranchLength FunDiLogLikelihood')
-            logging.info(f'{"+".join(models)} FullTree {args.seed} {alpha:.3f} {rho:.3f} {fundi_brlen} {fundi_ll}')
+        # report key results to log
+        best_log_file = 'fundi_full_tree.log'
+        alpha, rho, fundi_brlen, fundi_ll = parse_iqtree_log(f'{args.outdir}/{best_log_file}')
+        logging.info('Model Strategy Seed Alpha Rho FunDiBranchLength FunDiLogLikelihood')
+        logging.info(f'{"+".join(models)} FullTree {args.seed} {alpha:.3f} {rho:.3f} {fundi_brlen} {fundi_ll}')
 
     # except NameError as e:
     #     print(f"Panda-monium! {e}")
@@ -502,8 +503,8 @@ def main(args):
     # except ValueError as e:
     #     print(f"Fatal: {e} Check if inputs are valid!")
 
-    except FileNotFoundError as e:
-        print(f"File not found! {e}")
+    # except FileNotFoundError as e:
+    #     print(f"File not found! {e}")
 
 
 def float_range(start: float, stop: float, step: float):
@@ -1372,4 +1373,4 @@ if __name__ == "__main__":
     main(arguments)
     end_time = time.time()
     logging.info(f"Runtime: {end_time - start_time} seconds")
-    shutil.copy('fundi_wrapper.log', arguments.outdir + '/fundi_wrapper.log')
+    # shutil.copy('fundi_wrapper.log', arguments.outdir + '/fundi_wrapper.log')
