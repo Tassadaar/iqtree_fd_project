@@ -434,9 +434,24 @@ def main(args):
         # best_log_file = args.alignment.replace('.fasta','') + '.best_tree.log'
         best_log_file = args.alignment + '.FunDiWrapper.best_tree.log'
         logging.info(f'Best Tree Log File: {best_log_file}')
-        alpha, rho, fundi_brlen, fundi_ll = parse_iqtree_log(f'{args.outdir}/{best_log_file}')
-        logging.info('Model Strategy Seed Alpha Rho FunDiBranchLength FunDiLogLikelihood')
-        logging.info(f'{"+".join(models)} SubTree,{args.seed} {alpha:.3f} {rho:.3f} {fundi_brlen} {fundi_ll}')
+        alpha, rho, fundi_brlen, fundi_ll, total_tree_len = parse_iqtree_log(f'{args.outdir}/{best_log_file}')
+
+        logging.info('\n')
+        for result in (
+                f'Model                {"+".join(models)}\t'
+                f'Strategy             SubTree\t'
+                f'Seed                 {args.seed}\t'
+                f'Alpha                {alpha:.3f}\t'
+                f'Rho                  {rho:.3f}\t'
+                f'FundiBranchLength    {fundi_brlen}\t'
+                f'FundiLogLikelihood   {fundi_ll}\t'
+                f'TotalTreeLength      {total_tree_len}\t'
+        ).split('\t'):
+            logging.info(result)
+
+        # logging.info(f'Model\t{"+".join(models)}'
+        # logging.info('Model Strategy Seed Alpha Rho FunDiBranchLength FunDiLogLikelihood')
+        # logging.info(f'{"+".join(models)} SubTree,{args.seed} {alpha:.3f} {rho:.3f} {fundi_brlen} {fundi_ll}')
 
     # if however we want to estimate branch lengths
     # during the fundi, we don't need to stitch trees together
@@ -493,18 +508,23 @@ def main(args):
 
         # report key results to log
         best_log_file = 'fundi_full_tree.log'
-        alpha, rho, fundi_brlen, fundi_ll = parse_iqtree_log(f'{args.outdir}/{best_log_file}')
-        logging.info('Model Strategy Seed Alpha Rho FunDiBranchLength FunDiLogLikelihood')
-        logging.info(f'{"+".join(models)} FullTree {args.seed} {alpha:.3f} {rho:.3f} {fundi_brlen} {fundi_ll}')
+        alpha, rho, fundi_brlen, fundi_ll, total_tree_len = parse_iqtree_log(f'{args.outdir}/{best_log_file}')
 
-    # except NameError as e:
-    #     print(f"Panda-monium! {e}")
+        for result in (
+                f'Model                {"+".join(models)}\t'
+                f'Strategy             FullTree\t'
+                f'Seed                 {args.seed}\t'
+                f'Alpha                {alpha:.3f}\t'
+                f'Rho                  {rho:.3f}\t'
+                f'FundiBranchLength    {fundi_brlen}\t'
+                f'FundiLogLikelihood   {fundi_ll}\t'
+                f'TotalTreeLength      {total_tree_len}\t'
+        ).split('\t'):
+            logging.info(result)
 
-    # except ValueError as e:
-    #     print(f"Fatal: {e} Check if inputs are valid!")
-
-    # except FileNotFoundError as e:
-    #     print(f"File not found! {e}")
+        # alpha, rho, fundi_brlen, fundi_ll = parse_iqtree_log(f'{args.outdir}/{best_log_file}')
+        # logging.info('Model Strategy Seed Alpha Rho FunDiBranchLength FunDiLogLikelihood')
+        # logging.info(f'{"+".join(models)} FullTree {args.seed} {alpha:.3f} {rho:.3f} {fundi_brlen} {fundi_ll}')
 
 
 def float_range(start: float, stop: float, step: float):
@@ -1011,7 +1031,7 @@ def run_iqtrees_par(
     print()
 
 
-def parse_iqtree_log(logfile: str) -> Tuple[float, float, float, float]:
+def parse_iqtree_log(logfile: str) -> Tuple[float]:
     with open(logfile, "r") as iqtree_log:
         for line in iqtree_log:
             if "Gamma shape alpha" in line:
@@ -1029,8 +1049,12 @@ def parse_iqtree_log(logfile: str) -> Tuple[float, float, float, float]:
             if "FunDi log-likelihood:" in line:
                 words = line.split()
                 log_likelihood = float(words[2])
+                continue
+            if "Total tree length:" in line:
+                words = line.split()
+                total_tree_len = float(words[3])
                 break
-    return alpha, rho_value, central_branch_length, log_likelihood
+    return alpha, rho_value, central_branch_length, log_likelihood, total_tree_len
 
 
 def generate_summary(summary_filename, tree_count, model, increment, taxa_groups, keep, outdir: str) -> None:
@@ -1041,12 +1065,12 @@ def generate_summary(summary_filename, tree_count, model, increment, taxa_groups
     for index in range(1, tree_count + 1):
         formatted_index = f"{index:04d}"
         iqtree_log = f'{outdir}/tree_{formatted_index}.log'
-        alpha, rho_value, central_branch_length, log_likelihood = parse_iqtree_log(iqtree_log)
+        alpha, rho_value, central_branch_length, log_likelihood, total_tree_len = parse_iqtree_log(iqtree_log)
         # with open(f"{outdir}/tree_{formatted_index}.log", "r") as iqtree_log:
         # this is a problem with large datasets discovered and debugged on perun
         if not log_likelihood:
             raise NameError("Insufficient memory allocation!")
-        tree_properties.append((formatted_index, alpha, log_likelihood, rho_value, central_branch_length))
+        tree_properties.append((formatted_index, alpha, log_likelihood, rho_value, central_branch_length, total_tree_len))
 
     # sort the trees based on largest funDi log-likelihood
     sorted_tree_properties = sorted(tree_properties, key=lambda attr_tuple: attr_tuple[2], reverse=True)
@@ -1083,6 +1107,7 @@ def generate_summary(summary_filename, tree_count, model, increment, taxa_groups
         best_fundi_ll: float         = sorted_tree_properties[0][2]
         best_rho: float              = sorted_tree_properties[0][3]
         best_fundi_branch_len: float = sorted_tree_properties[0][4]
+        best_total_tree_len: float   = sorted_tree_properties[0][5]
 
         summary_file.write(
             f"Best tree: Tree {best_index}\n"
@@ -1090,6 +1115,7 @@ def generate_summary(summary_filename, tree_count, model, increment, taxa_groups
             f"Best funDi log-likelihood: {best_fundi_ll:.3f}\n"
             f"Best rho: {best_rho:.3f}\n"
             f"Best Central branch length: {best_fundi_branch_len:.3f}\n"
+            f"Best Total Tree Length: {best_total_tree_len:.3f}\n"
         )
 
         summary_file.write("\nRooted best tree:\n")
@@ -1100,10 +1126,11 @@ def generate_summary(summary_filename, tree_count, model, increment, taxa_groups
         summary_file.write("The following list ranks the remaining trees based on best log-likelihood:\n")
 
         for index in range(1, len(sorted_tree_properties)):
-            summary_file.write(f"funDi Log-likelihood of the tree {sorted_tree_properties[index][0]}: "
-                               f"{sorted_tree_properties[index][1]}; "
-                               f"rho: {sorted_tree_properties[index][2]}; "
-                               f"central branch length: {sorted_tree_properties[index][3]}\n")
+            summary_file.write(f"Tree {sorted_tree_properties[index][0]}:\t"
+                               f"FunDi log-likelihood: {sorted_tree_properties[index][2]};\t"
+                               f"Rho: {sorted_tree_properties[index][3]};\t"
+                               f"Central Branch Length: {sorted_tree_properties[index][4]}\t"
+                               f"Total Tree Length: {sorted_tree_properties[index][5]}\n")
 
 
     alignment_index = summary_filename.replace('.Summary.txt','')
