@@ -125,8 +125,10 @@ except PermissionError:
     print(f"Permission denied: Unable to create '{arguments.outdir}'")
 
 # configure logger
+# strip directory path from filename
+base = os.path.basename(arguments.alignment)
 logging.basicConfig(
-        filename=f'{arguments.outdir}/{arguments.alignment}.fundi_wrapper.log',
+        filename=f'{arguments.outdir}/{base}.fundi_wrapper.log',
         filemode='w',
         # level=logging.DEBUG,
         level=logging.INFO,
@@ -186,7 +188,11 @@ def main(args):
     defined_groups: List[Set[str]] = validate_def_file(master_tree, args.definition)
 
     # parse model. Syntax: Rate Matrix+Mixture Model+Rate Heterogeneity
+    mixture_model = False
     models: List[str] = args.model.split("+")
+    if any(re.match(r'C[1-6]0', m) for m in models):
+        mixture_model = True
+        logging.info( 'Mixture model detected. After subtree calculation, new mixture models will be calculated and a NEXUS file will be generated' )
 
     # --- SPLIT TREE AND ALIGNMENT BASED ON DEFINITION FILE ---
     logging.info( 'Splitting input tree and alignment into two subtrees and subalignments\n' )
@@ -217,7 +223,6 @@ def main(args):
             "-s", f"{args.outdir}/{subtree}.aln",
             "-te", f"{args.outdir}/{subtree}.newick",
             "-m", "+".join(models),
-            "-mwopt",
             "--prefix", f'{args.outdir}/{subtree}',
             "-nt", str(args.cores),
             "-mem", "200G",
@@ -228,6 +233,8 @@ def main(args):
         # sometimes the user wants to use a custom model defined in a NEXUS file
         if args.nexus:
             iqtree_command = iqtree_command + ["--mdef", args.nexus]
+        if mixture_model:
+            iqtree_command = iqtree_command + ["-mwopt"]
         logging.info( ' '.join(iqtree_command) )
         iqtree_tasks.append(iqtree_command)
 
@@ -267,10 +274,10 @@ def main(args):
 
         # Compute the delayed tasks in parallel
         futures = client.compute(delayed_tasks)
-        logging.info('Statement after client.compute()')
+        logging.debug('Statement after client.compute()')
         # Gather results
         client.gather(futures)
-        logging.info('Statement after client.gather()')
+        logging.debug('Statement after client.gather()')
         # Close the two workers
         cluster.scale(jobs=0)
 
@@ -294,40 +301,48 @@ def main(args):
     # weighted using (n subtree_taxa / n all_taxa)
     a_weight, b_weight  = calculate_weights(a_tree, b_tree)
     avg_alpha: float    = calculate_weighted_average_alpha(f"{args.outdir}/subtree_a.iqtree", f"{args.outdir}/subtree_b.iqtree", a_weight, b_weight)
-    avg_mixture_weights = calculate_weighted_average_mixture_weights(f"{args.outdir}/subtree_a.iqtree", f"{args.outdir}/subtree_b.iqtree", a_weight, b_weight)
+    if mixture_model:
+        avg_mixture_weights = calculate_weighted_average_mixture_weights(f"{args.outdir}/subtree_a.iqtree", f"{args.outdir}/subtree_b.iqtree", a_weight, b_weight)
     #: dict[str,float]
 
     logging.info(f'Re-optimized alpha: {str(avg_alpha)}')
-    logging.info('Re-optimized class weights:')
-    logging.info('Class No.\tRe-optimized weight:')
-    for class_no, new_weight in avg_mixture_weights.items():
-        logging.info(f'{class_no}\t{new_weight}')
-        # class_name = mixture_model_freqs[class_no][0]
-        # weight_statements.append( f"fundi_{class_name}:1:{str(new_weight)}" )
+
+    # only log mixture weights and create
+    # NEXUS file only if we are actually using a mixture model
+    nexus_file = None
+    if mixture_model:
+
+        logging.info('Re-optimized class weights:')
+        logging.info('Class No.\tRe-optimized weight:')
+        for class_no, new_weight in avg_mixture_weights.items():
+            logging.info(f'{class_no}\t{new_weight}')
+            # class_name = mixture_model_freqs[class_no][0]
+            # weight_statements.append( f"fundi_{class_name}:1:{str(new_weight)}" )
 
 
-    # --- CREATE NEXUS MODEL FILE FROM RE-OPTIMIZED ALPHA AND MIXTURE WEIGHTS ---
-    logging.info( 'Creating "re-optimized-model.nexus" using re-optimized alpha and mixture weights' )
+        # --- CREATE NEXUS MODEL FILE FROM RE-OPTIMIZED ALPHA AND MIXTURE WEIGHTS ---
+        logging.info( 'Creating "re-optimized-model.nexus" using re-optimized alpha and mixture weights' )
 
-    # if we are using a custom model,
-    # defined in a custom NEXUS file,
-    # provided on the command line 
-    if args.nexus:
-        file_handle = open(args.nexus, "r")
-        key_phrase = "begin models;"
-    # if we are using a standard LG+Cx0 model
-    else:
-        file_handle = io.StringIO(MODEL_MIXTURE_DB)
-        key_phrase = f"CAT-{models[1]}"
+        # if we are using a custom model,
+        # defined in a custom NEXUS file,
+        # provided on the command line 
+        if args.nexus:
+            file_handle = open(args.nexus, "r")
+            key_phrase = "begin models;"
+        # if we are using a standard LG+Cx0 model
+        else:
+            file_handle = io.StringIO(MODEL_MIXTURE_DB)
+            key_phrase = f"CAT-{models[1]}"
 
-    # combine class frequencies from custom model or LG+Cx0 model with 
-    # re-optimized alpha and mixture weights to make a new nexus file, called 're-optimized-model.nexus'
-    # nexus_address, models[1] = create_custom_nexus_file(avg_mixture_weights, file_handle, models[1], key_phrase)
-    create_custom_nexus_file(avg_mixture_weights, file_handle, models[1], key_phrase, args.outdir)
+        # combine class frequencies from custom model or LG+Cx0 model with 
+        # re-optimized alpha and mixture weights to make a new nexus file, called 're-optimized-model.nexus'
+        # nexus_address, models[1] = create_custom_nexus_file(avg_mixture_weights, file_handle, models[1], key_phrase)
+        create_custom_nexus_file(avg_mixture_weights, file_handle, models[1], key_phrase, args.outdir)
+        nexus_file = f'{args.outdir}/re-optimized-model.nexus'
 
-    # update model name that will refer to the model
-    # described in 're-optimized-model.nexus'
-    models[1] = f"fundi_{models[1]}"
+        # update model name that will refer to the model
+        # described in 're-optimized-model.nexus'
+        models[1] = f"fundi_{models[1]}"
 
 
     # if we use branch lengths from the subtrees,
@@ -388,6 +403,7 @@ def main(args):
 
         # if we want to submit trees to a computer cluster
         elif args.jobqueue:
+            #nexus_file = f'{args.outdir}/re-optimized-model.nexus' if mixture_model else None
             run_iqtrees(
                 cluster=cluster,
                 client=client,
@@ -395,7 +411,7 @@ def main(args):
                 alignment_address=args.alignment,
                 model="+".join(models),
                 avg_alpha=avg_alpha,
-                nexus_file=f'{args.outdir}/re-optimized-model.nexus',
+                nexus_file=nexus_file,
                 seed=args.seed,
                 outdir=args.outdir,
                 cores=args.cores,
@@ -470,7 +486,7 @@ def main(args):
             "-s", args.alignment,
             "-te", args.tree,
             "-m", "+".join(models),
-            "-mdef", f'{args.outdir}/re-optimized-model.nexus',
+            # "-mdef", f'{args.outdir}/re-optimized-model.nexus',
             "-a", str(avg_alpha),
             "--fundi", f"{','.join(defined_groups[0])},estimate",
             "--fundi-init-rho", str(0.5),
@@ -480,6 +496,8 @@ def main(args):
             "-prec", "10",
             "--quiet",
         ]
+        if mixture_model:
+            iqtree_command = iqtree_command + ["-mdef", nexus_file]
         logging.info( ' '.join(iqtree_command) )
         iqtree_tasks.append(iqtree_command)
         logging.debug(iqtree_tasks)
@@ -879,7 +897,6 @@ def run_iqtrees(
             "-te", f"{outdir}/tree_{formatted_index}.tree",
             "-m", model,
             "-a", str(avg_alpha),
-            "--mdef", nexus_file,
             "-blfix",
             "--fundi-init-rho", str(0.5),
             "--fundi-init-branch", str(0.01),
@@ -892,6 +909,9 @@ def run_iqtrees(
             "--fundi", f"{','.join(leaves)},estimate",
             # "-redo",
         ]
+        if nexus_file is not None:
+            iqtree_cmd = iqtree_cmd + ["--mdef", nexus_file]
+
         iqtree_tasks.append(iqtree_cmd)
         logging.info( ' '.join(iqtree_cmd) )
         # logging.info(iqtree_cmd)
