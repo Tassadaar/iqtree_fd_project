@@ -23,6 +23,7 @@ import logging
 import shutil
 import time
 import concurrent.futures
+import psutil
 
 # stuff you need to install
 from ete3 import Tree, TreeNode #, TreeStyle
@@ -130,8 +131,8 @@ base = os.path.basename(arguments.alignment)
 logging.basicConfig(
         filename=f'{arguments.outdir}/{base}.fundi_wrapper.log',
         filemode='w',
-        # level=logging.DEBUG,
-        level=logging.INFO,
+        level=logging.DEBUG,
+        # level=logging.INFO,
         format='%(asctime)s -- %(levelname)s: %(message)s'
 )
 
@@ -157,10 +158,12 @@ for msg in (
 # logging.info('\n')
 
 if arguments.jobqueue:
+    jobid = os.environ.get('JOB_ID')
     for msg in (
         'fundi_wrapper.py was invoked to be run parallel on a computer cluster\t'
         f'-q/--jobqueue   {arguments.jobqueue}\t'
-        f'-j/--jobs       {arguments.jobs}\n'
+        f'-j/--jobs       {arguments.jobs}\t'
+        f'JOBID:          {jobid}\n'
     ).split('\t'):
         logging.info(msg)
 
@@ -242,23 +245,34 @@ def main(args):
     # the user wants to run the fundi_wrapper
     # on a computer cluster. Hence, use dask
     if args.jobqueue:
-        logging.info( iqtree_tasks )
+        # logging.info( iqtree_tasks )
+
+        # determine network interface
+        net_ifs = list( psutil.net_if_addrs().keys() )
+        net_ifs.remove('lo')
+        scheduler_interface = net_ifs[0]
 
         # Configure the SGE cluster
         # the cluster object contains a scheduler!
         # see cluster.scheduler
         cluster = SGECluster(
             # worker resources
-            cores=1,
             processes=1,
-            memory="1GB",
+            cores=args.cores,
+            memory="10GB",
             # job resources
             # job_extra=['-V', f'-pe threaded {str(args.cores)}', '-o /dev/null'],
             job_extra=['-V', f'-pe threaded {str(args.cores)}' ],
             walltime="99:99:99",
             #resource_spec='h_vmem=70G',
             queue=args.jobqueue,
+            # interface='eno1',
+            scheduler_options={'interface':scheduler_interface},
+            death_timeout=120,
+            log_directory='dask_logs',
         )
+        logging.debug(f'Cluster Name: {cluster.name}')
+        logging.debug(f'Cluster Scheduler Address: {cluster.scheduler_address}')
         # Create a Dask client
         # and attach it to the cluster/scheduler
         client = Client(cluster)
@@ -268,9 +282,12 @@ def main(args):
 
         # collect tasks to be submitted
         delayed_tasks = [ 
-            delayed(subprocess.run)(task, stderr=subprocess.DEVNULL)
+            # delayed(subprocess.run)(task, stderr=subprocess.DEVNULL)
+            delayed(subprocess.run)(task, check=True)
             for task in iqtree_tasks
         ]
+
+        client.wait_for_workers(n_workers=2)
 
         # Compute the delayed tasks in parallel
         futures = client.compute(delayed_tasks)
@@ -509,20 +526,15 @@ def main(args):
             delayed(subprocess.run)(task)
             for task in iqtree_tasks
         ]
-        # collect task to be submitted
-        # delayed_task = delayed(subprocess.run)(iqtree_command, stderr=subprocess.DEVNULL)
-
 
         # Compute the delayed tasks in parallel
+        logging.debug('About to compute')
         futures = client.compute(delayed_tasks)
         # futures = client.compute(delayed_task)
         # Gather results
+        logging.debug('About to gather')
         client.gather(futures)
         client.shutdown()
-        # client.close()
-        # # Close the two workers
-        # cluster.scale(jobs=0)
-        # cluster.close()
 
         # report key results to log
         best_log_file = 'fundi_full_tree.log'
@@ -568,7 +580,6 @@ def validate_alignment(tree, alignment_file):
                 continue
             if isinstance(alignment_obj, AlignIO.MultipleSeqAlignment):
                 logging.info(f"Your alignment is of the format {alignment_format}")
-                # print(f"Your alignment is of the format {alignment_format}.\n")
                 return alignment_obj
         return None
 
@@ -647,7 +658,7 @@ def validate_def_file(tree, def_file) -> List[Set[str]]:
 
     # check 5: either definition file partition (taxa group) must have more than 1 taxon
     if len(taxa_groups[0]) == 1 or len(taxa_groups[1]) == 1:
-        raise ValueError("Definition file has at least one partition with only 1 taxon!")
+        raise ValueError("Definition file has at least one partition with only 1 taxon! You can't make a subtree from an subalignment with 1 taxon!")
 
 
     return taxa_groups
