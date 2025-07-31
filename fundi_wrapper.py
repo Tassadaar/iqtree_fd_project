@@ -158,12 +158,14 @@ for msg in (
 # logging.info('\n')
 
 if arguments.jobqueue:
-    jobid = os.environ.get('JOB_ID')
+    jobid  = os.environ.get('JOB_ID')
+    taskid = os.environ.get('SGE_TASK_ID')
     for msg in (
         'fundi_wrapper.py was invoked to be run parallel on a computer cluster\t'
         f'-q/--jobqueue   {arguments.jobqueue}\t'
         f'-j/--jobs       {arguments.jobs}\t'
-        f'JOBID:          {jobid}\n'
+        f'JOBID:          {jobid}\t'
+        f'TASKID:         {taskid}\n'
     ).split('\t'):
         logging.info(msg)
 
@@ -273,6 +275,7 @@ def main(args):
         )
         logging.debug(f'Cluster Name: {cluster.name}')
         logging.debug(f'Cluster Scheduler Address: {cluster.scheduler_address}')
+        logging.debug(f'Cluster Scheduler Interface: {scheduler_interface}')
         # Create a Dask client
         # and attach it to the cluster/scheduler
         client = Client(cluster)
@@ -458,14 +461,22 @@ def main(args):
         # To get the number of trees generated, we take number of proportions to the power of 2
         # summary_name = args.alignment.replace('.aln','') + '.summary.txt'
         # summary_name = args.alignment.replace('.fasta','') + '.summary.txt'
-        summary_name = args.alignment + '.FunDiWrapper.Summary.txt'
-        generate_summary(summary_name, len(trees), "+".join(models), args.increment, defined_groups, args.keep, args.outdir)
+        summary_name = os.path.basename(args.alignment) + '.FunDiWrapper.Summary.txt'
+        generate_summary(
+            summary_filename=summary_name, 
+            tree_count=len(trees), 
+            model="+".join(models), 
+            increment=args.increment, 
+            taxa_groups=defined_groups, 
+            keep=args.keep, 
+            outdir=args.outdir
+        )
         # generate summary also creates '___.best_tree.log file'
 
         # report key results to log
         # best_log_file = args.alignment.replace('.aln','') + '.best_tree.log'
         # best_log_file = args.alignment.replace('.fasta','') + '.best_tree.log'
-        best_log_file = args.alignment + '.FunDiWrapper.best_tree.log'
+        best_log_file = os.path.basename(args.alignment) + '.FunDiWrapper.best_tree.log'
         logging.info(f'Best Tree Log File: {best_log_file}')
         alpha, rho, fundi_brlen, fundi_ll, total_tree_len = parse_iqtree_log(f'{args.outdir}/{best_log_file}')
 
@@ -917,8 +928,9 @@ def run_iqtrees(
             "--prefix", f"{outdir}/tree_{formatted_index}",
             "-prec", "10",
             "--quiet",
+            "--keep-ident",
             "--fundi", f"{','.join(leaves)},estimate",
-            # "-redo",
+            "-redo",
         ]
         if nexus_file is not None:
             iqtree_cmd = iqtree_cmd + ["--mdef", nexus_file]
@@ -1088,7 +1100,15 @@ def parse_iqtree_log(logfile: str) -> Tuple[float]:
     return alpha, rho_value, central_branch_length, log_likelihood, total_tree_len
 
 
-def generate_summary(summary_filename, tree_count, model, increment, taxa_groups, keep, outdir: str) -> None:
+def generate_summary(
+        summary_filename,
+        tree_count,
+        model,
+        increment,
+        taxa_groups,
+        keep,
+        outdir: str
+) -> None:
 
     # gather for each generated stitched tree,
     # the rho, central branch length and log likelihood
@@ -1171,7 +1191,11 @@ def generate_summary(summary_filename, tree_count, model, increment, taxa_groups
     shutil.copy(f"{outdir}/tree_{best_index}.ckp.gz",   f"{outdir}/{alignment_index}.best_tree.ckp.gz")
 
     if not keep:
-        shutil.rmtree(outdir)
+        # shutil.rmtree(outdir)
+        for filename in os.listdir(outdir):
+            if filename.startswith('tree_'):
+                file_path = os.path.join(outdir, filename)
+                os.remove(file_path)
 
 
 
