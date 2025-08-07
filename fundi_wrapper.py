@@ -234,6 +234,7 @@ def main(args):
             "-prec", "10",
             "--quiet",
             "--keep-ident",
+            "--undo",
         ]
         # sometimes the user wants to use a custom model defined in a NEXUS file
         if args.nexus:
@@ -261,7 +262,7 @@ def main(args):
             # worker resources
             processes=1,
             cores=args.cores,
-            memory="10GB",
+            memory="30GB",
             # job resources
             # job_extra=['-V', f'-pe threaded {str(args.cores)}', '-o /dev/null'],
             job_extra=['-V', f'-pe threaded {str(args.cores)}' ],
@@ -459,8 +460,6 @@ def main(args):
         logging.info( 'Generating summary file' )
 
         # To get the number of trees generated, we take number of proportions to the power of 2
-        # summary_name = args.alignment.replace('.aln','') + '.summary.txt'
-        # summary_name = args.alignment.replace('.fasta','') + '.summary.txt'
         summary_name = os.path.basename(args.alignment) + '.FunDiWrapper.Summary.txt'
         generate_summary(
             summary_filename=summary_name, 
@@ -474,8 +473,6 @@ def main(args):
         # generate summary also creates '___.best_tree.log file'
 
         # report key results to log
-        # best_log_file = args.alignment.replace('.aln','') + '.best_tree.log'
-        # best_log_file = args.alignment.replace('.fasta','') + '.best_tree.log'
         best_log_file = os.path.basename(args.alignment) + '.FunDiWrapper.best_tree.log'
         logging.info(f'Best Tree Log File: {best_log_file}')
         alpha, rho, fundi_brlen, fundi_ll, total_tree_len = parse_iqtree_log(f'{args.outdir}/{best_log_file}')
@@ -493,9 +490,6 @@ def main(args):
         ).split('\t'):
             logging.info(result)
 
-        # logging.info(f'Model\t{"+".join(models)}'
-        # logging.info('Model Strategy Seed Alpha Rho FunDiBranchLength FunDiLogLikelihood')
-        # logging.info(f'{"+".join(models)} SubTree,{args.seed} {alpha:.3f} {rho:.3f} {fundi_brlen} {fundi_ll}')
 
     # if however we want to estimate branch lengths
     # during the fundi, we don't need to stitch trees together
@@ -530,7 +524,8 @@ def main(args):
         iqtree_tasks.append(iqtree_command)
         logging.debug(iqtree_tasks)
 
-        cluster.scale(jobs=2)
+        # cluster.scale(jobs=2)
+        cluster.scale(jobs=1)
         # collect tasks to be submitted
         delayed_tasks = [
             # delayed(subprocess.run)(task, stderr=subprocess.DEVNULL)
