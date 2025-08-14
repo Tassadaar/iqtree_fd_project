@@ -24,6 +24,7 @@ import shutil
 import time
 import concurrent.futures
 import psutil
+# import pprint
 
 # stuff you need to install
 from ete3 import Tree, TreeNode #, TreeStyle
@@ -53,8 +54,16 @@ parser.add_argument( "-d", "--definition",
     help="Definition file that splits the tree and alignment by FunDi branch"
 )
 parser.add_argument( "-i", "--increment",
-    required=False, default=0.05, type=float,
-    help="Partition top branches of subtrees in sections of X subs/site when stitching subtrees together in alternate full trees, default is 0.05"
+    required=False, default=0.01, type=float,
+    help="Partition top branches of subtrees in sections of X subs/site when stitching subtrees together in alternate full trees, default is 0.01"
+)
+parser.add_argument( "-y", "--increment_style",
+    required=False, default='abs', type=str, choices=['abs','rel'],
+    help="""
+    For subtree_branch_lengths strategy. 
+    If abs(olute) (default behavior), each stitched tree permutation differs in where the FunDi branch attaches to the subtrees by exactly [increment] branch length
+    If rel(ative), each stitched tree permutation differs in where the FunDi branch attaches to the subtrees by [increment] fraction of the sum of the top branches of the two subtrees
+    """
 )
 parser.add_argument( "-m", "--model",
     required=False, default="LG+C10+G",
@@ -140,19 +149,20 @@ logging.basicConfig(
 # log how fundi_wrapper was called
 logging.info('fundi_wrapper.py was called with the following parameters:\n')
 for msg in (
-        f'--iqtree_path     {arguments.iqtree_path}\t'
-        # f'--iqtree_path     iqtree2\t'
-        f'-te/--tree        {arguments.tree}\t'
-        f'-s/--alignment    {arguments.alignment}\t'
-        f'-d/--definition   {arguments.definition}\t'
-        f'-i/--increment    {arguments.increment}\t'
-        f'-m/--model        {arguments.model}\t'
-        f'-mdef/--nexus     {arguments.nexus}\t'
-        f'-strat/--strategy {arguments.strategy}\t'
-        f'--seed            {arguments.seed}\t'
-        f'-o/--outdir       {arguments.outdir}\t'
-        f'-nt/--cores       {arguments.cores}\t'
-        f'-k/--keep         {arguments.keep}\n'
+        f'--iqtree_path             {arguments.iqtree_path}\t'
+        # f'--iqtree_path             iqtree2\t'
+        f'-te/--tree                {arguments.tree}\t'
+        f'-s/--alignment            {arguments.alignment}\t'
+        f'-d/--definition           {arguments.definition}\t'
+        f'-i/--increment            {arguments.increment}\t'
+        f'-i/--increment_style      {arguments.increment_style}\t'
+        f'-m/--model                {arguments.model}\t'
+        f'-mdef/--nexus             {arguments.nexus}\t'
+        f'-strat/--strategy         {arguments.strategy}\t'
+        f'--seed                    {arguments.seed}\t'
+        f'-o/--outdir               {arguments.outdir}\t'
+        f'-nt/--cores               {arguments.cores}\t'
+        f'-k/--keep                 {arguments.keep}\n'
 ).split('\t'):
     logging.info(msg)
 # logging.info('\n')
@@ -260,11 +270,11 @@ def main(args):
         # see cluster.scheduler
         cluster = SGECluster(
             # worker resources
+            # threads-per-worker = n_cores/n_processes
             processes=1,
-            cores=args.cores,
+            cores=1,
             memory="30GB",
             # job resources
-            # job_extra=['-V', f'-pe threaded {str(args.cores)}', '-o /dev/null'],
             job_extra=['-V', f'-pe threaded {str(args.cores)}' ],
             walltime="99:99:99",
             #resource_spec='h_vmem=70G',
@@ -379,9 +389,39 @@ def main(args):
         logging.info(f'Length of top branch subtree a: {a_branch}')
         logging.info(f'Length of top branch subtree b: {b_branch}')
 
-        # generate steps (0.01, 0.02, 0.03 ... branch_length)
-        a_steps = float_range(start=args.increment, stop=a_branch, step=args.increment)
-        b_steps = float_range(start=args.increment, stop=b_branch, step=args.increment)
+        # calculate a step size that is the same for the a_branch and the b_branch
+        if args.increment_style == 'rel':
+            sum_ab_branch: float = a_branch + b_branch
+            step_size: float = args.increment * sum_ab_branch
+            # step_size: float = 0.01 * sum_ab_branch
+        elif args.increment_style == 'abs':
+            step_size: float = args.increment
+
+        logging.info(f'Increment style = {args.increment_style}')
+        logging.info(f'Step size       = {step_size}')
+
+        # if inferred step_size is larger than one of the top branches,
+        # we'd get 0 stitched-trees
+        # so we only check one stitch variation of one subtree (at 0.5 its branch length)
+        # while exploring the other subtree with step_size
+        if a_branch < step_size:
+            logging.info(f'Length of top branch subtree a ({a_branch}) is smaller than step size {step_size}')
+            logging.info(f'Fixing subtree a stitching at point {0.5*a_branch} in branch')
+            a_steps = [0.5 * a_branch]
+        else:
+            a_steps = float_range(start=step_size, stop=a_branch, step=step_size)
+
+        if b_branch < step_size:
+            logging.info(f'Length of top branch subtree b ({b_branch}) is smaller than step size {step_size}')
+            logging.info(f'Fixing subtree b stitching at point {0.5*b_branch} in branch')
+            b_steps = [0.5 * b_branch]
+        else:
+            # generate steps (0.01, 0.02, 0.03 ... branch_length)
+            b_steps = float_range(start=step_size, stop=b_branch, step=step_size)
+
+            # # generate steps (0.01, 0.02, 0.03 ... branch_length)
+            # a_steps = float_range(start=args.increment, stop=a_branch, step=args.increment)
+            # b_steps = float_range(start=args.increment, stop=b_branch, step=args.increment)
 
         trees = []
         # get alpha and beta from a cartesian product of proportions
@@ -465,7 +505,8 @@ def main(args):
             summary_filename=summary_name, 
             tree_count=len(trees), 
             model="+".join(models), 
-            increment=args.increment, 
+            # increment=args.increment, 
+            step_size=step_size,
             taxa_groups=defined_groups, 
             keep=args.keep, 
             outdir=args.outdir
@@ -946,6 +987,7 @@ def run_iqtrees(
         # delayed_tasks.append(delayed(subprocess.run)(iqtree_cmd, stderr=subprocess.DEVNULL))
         # Compute the delayed tasks in parallel
         futures = client.compute(delayed_tasks)
+        # pprint.pprint(client.scheduler_info())
         # Gather results
         client.gather(futures)
         # Optionally, wait for all workers to fully stop
@@ -1099,7 +1141,8 @@ def generate_summary(
         summary_filename,
         tree_count,
         model,
-        increment,
+        # increment,
+        step_size,
         taxa_groups,
         keep,
         outdir: str
@@ -1147,7 +1190,8 @@ def generate_summary(
 
         summary_file.write(f"Trees generated: {tree_count}\n")
         summary_file.write(f"Model used: {model}\n")
-        summary_file.write(f"Increment used: {increment}\n")
+        # summary_file.write(f"Increment used: {increment}\n")
+        summary_file.write(f"Step size used: {step_size}\n")
 
         best_alpha: float            = sorted_tree_properties[0][1]
         best_fundi_ll: float         = sorted_tree_properties[0][2]
