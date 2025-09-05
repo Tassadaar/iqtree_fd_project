@@ -20,16 +20,17 @@ import argparse
 import subprocess
 import itertools
 import logging
+import warnings
 import shutil
 import time
 import concurrent.futures
 import psutil
-# import pprint
+import pprint
 
 # stuff you need to install
 from ete3 import Tree, TreeNode #, TreeStyle
 from ete3.parser.newick import NewickError
-from Bio import AlignIO
+from Bio import AlignIO, BiopythonDeprecationWarning
 from dask_jobqueue import SGECluster
 from dask.distributed import Client
 from dask import delayed
@@ -265,6 +266,27 @@ def main(args):
         net_ifs.remove('lo')
         scheduler_interface = net_ifs[0]
 
+        # ensure that worker names are unique,
+        # even if multiple instances of this script
+        # are running at the same time in the cluster
+        jobid  = os.environ.get('JOB_ID')
+        taskid = os.environ.get('SGE_TASK_ID')
+        unique_worker_id=f'dask-worker-{jobid}-{taskid}'
+        # NOTE: dask will automatically append the worker name
+        # with a unique-ifier for each worker launched from this script
+        # e.g. 'dask-worker-290900-1-0', where
+        # -290900 is the jobid, -1 the task id, and -0 the unique-ifier
+
+        # print scheduler information to this file
+        scheduler_file = f'dask_logs/dask-scheduler-{jobid}-{taskid}.json'
+
+        # dynamically find what the network interface is
+        # of the node that the worker gets launched on
+        find_worker_interface = [
+            "export DASK_INTERFACE=$(ip -o -4 addr show | awk '/inet 192/{print $2}' | head -n1)",
+            "echo Worker node starting. Found interface: $DASK_INTERFACE"
+        ]
+
         # Configure the SGE cluster
         # the cluster object contains a scheduler!
         # see cluster.scheduler
@@ -274,17 +296,29 @@ def main(args):
             processes=1,
             cores=1,
             memory="30GB",
+            name=unique_worker_id,
             # job resources
-            job_extra=['-V', f'-pe threaded {str(args.cores)}' ],
+            # for some crazy reason, default shell is csh, not bash
+            # hence here we force it to use bash
+            job_extra_directives=[ 
+                '-V', 
+                f'-pe threaded {str(args.cores)}',
+                '-S /bin/bash'
+            ],
             walltime="99:99:99",
             #resource_spec='h_vmem=70G',
             queue=args.jobqueue,
             # interface='eno1',
-            scheduler_options={'interface':scheduler_interface},
+            scheduler_options={
+                'interface'      : scheduler_interface,
+                'scheduler_file' : scheduler_file,
+            },
+            # extra=['--interface', 'enp68s0f1'],
             death_timeout=120,
             log_directory='dask_logs',
+            job_script_prologue=find_worker_interface,
         )
-        logging.debug(f'Cluster Name: {cluster.name}')
+        logging.debug(f'Worker Name: {cluster.name}')
         logging.debug(f'Cluster Scheduler Address: {cluster.scheduler_address}')
         logging.debug(f'Cluster Scheduler Interface: {scheduler_interface}')
         # Create a Dask client
@@ -531,6 +565,11 @@ def main(args):
         ).split('\t'):
             logging.info(result)
 
+        # after processing everything, we can shutdown the client
+        if client:
+            logging.info('Shutting down client')
+            client.shutdown()
+
 
     # if however we want to estimate branch lengths
     # during the fundi, we don't need to stitch trees together
@@ -621,13 +660,15 @@ def validate_alignment(tree, alignment_file):
     # Does the alignment have the exact same set of taxa as the tree?
     def detect_alignment_format():
         for alignment_format in ALIGNMENT_FORMATS:
-            try:
-                alignment_obj = AlignIO.read(alignment_file, alignment_format)
-            except:
-                continue
-            if isinstance(alignment_obj, AlignIO.MultipleSeqAlignment):
-                logging.info(f"Your alignment is of the format {alignment_format}")
-                return alignment_obj
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", BiopythonDeprecationWarning)
+                try:
+                    alignment_obj = AlignIO.read(alignment_file, alignment_format)
+                except:
+                    continue
+                if isinstance(alignment_obj, AlignIO.MultipleSeqAlignment):
+                    logging.info(f"Your alignment is of the format {alignment_format}")
+                    return alignment_obj
         return None
 
     # parsing fasta file
@@ -987,16 +1028,17 @@ def run_iqtrees(
         # delayed_tasks.append(delayed(subprocess.run)(iqtree_cmd, stderr=subprocess.DEVNULL))
         # Compute the delayed tasks in parallel
         futures = client.compute(delayed_tasks)
-        # pprint.pprint(client.scheduler_info())
+        pprint.pprint(client.scheduler_info())
         # Gather results
         client.gather(futures)
         # Optionally, wait for all workers to fully stop
-        client.close()
-        # Stop all Dask workers
-        cluster.scale(jobs=0)  # This should stop all workers
-        cluster.close()
+        # client.close()
+        # # Stop all Dask workers
+        # cluster.scale(jobs=0)  # This should stop all workers
+        # cluster.close()
+        # client.shutdown()
 
-    # run iqtrees sequenctially
+    # run iqtrees sequentially
     else:
         for task in iqtree_tasks:
             current_tree = task[4]
